@@ -44,7 +44,7 @@ Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_
 def load_data(_arg = None, vector_store=None):
     with st.spinner(text="Loading and indexing – hang tight! This should take a few minutes."):
         # Read & load document from folder
-        reader = SimpleDirectoryReader(input_dir="./docs2", recursive=True)
+        reader = SimpleDirectoryReader(input_dir="./docs", recursive=True)
         documents = reader.load_data()
 
     if vector_store is None:
