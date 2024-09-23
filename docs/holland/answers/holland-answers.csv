@@ -1,0 +1,49 @@
+Type,Question,AnswerPercentage
+Realistic,Test the quality of parts before shipment,1
+Realistic,Lay brick or tile,1
+Realistic,Work on an offshore oil-drilling rig,1
+Realistic,Assemble electronic parts,1
+Realistic,Operate a grinding machine in a factory,0.4
+Realistic,Fix a broken faucet,1
+Realistic,Assemble products in a factory,0.7
+Realistic,Install flooring in houses,1
+Investigative,Study the structure of the human body,0
+Investigative,Study animal behavior,1
+Investigative,Do research on plants or animals,1
+Investigative,Develop a new medical treatment or procedure,0
+Investigative,Conduct biological research,0
+Investigative,Study whales and other types of marine life,0.2
+Investigative,Work in a biology lab,1
+Investigative,Make a map of the bottom of an ocean,1
+Artistic,Conduct a musical choir,0
+Artistic,Direct a play,0
+Artistic,Design artwork for magazines,0
+Artistic,Write a song,1
+Artistic,Write books or plays,1
+Artistic,Play a musical instrument,1
+Artistic,Perform stunts for a movie or television show,1
+Artistic,Design sets for plays,1
+Social,Give career guidance to people,1
+Social,Do volunteer work at a non-profit organization,0
+Social,Help people who have problems with drugs or alcohol,0
+Social,Teach an individual an exercise routine,0
+Social,Help people with family-related problems,0.3
+Social,Supervise the activities of children at a camp,1
+Social,Teach children how to read,1
+Social,Help elderly people with their daily activities,0
+Enterprising,Sell restaurant franchises to individuals,1
+Enterprising,Sell merchandise at a department store,0.4
+Enterprising,Manage the operations of a hotel,0
+Enterprising,Operate a beauty salon or barber shop,0
+Enterprising,Manage a department within a large company,1
+Enterprising,Manage a clothing store,1
+Enterprising,Sell houses,1
+Enterprising,Run a toy store,1
+Conventional,Generate the monthly payroll checks for an office,1
+Conventional,Inventory supplies using a hand-held computer,0.9
+Conventional,Use a computer program to generate customer bills,1
+Conventional,Maintain employee records,0.8
+Conventional,Compute and record statistical and other numerical data,1
+Conventional,Operate a calculator,1
+Conventional,Handle customers' bank transactions,1
+Conventional,Keep shipping and receiving recor,0
