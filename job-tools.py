@@ -29,15 +29,15 @@ KNOW.
 
 Your primary job is to help people to find jobs related to their interest from Alumni Petra job vacancy database.
 
-When a user is asking about possible jobs, you should at least mention the name, location, type, system,  description, and the requirement of each of the job. Use numbered lists to show the user possible results. Show the users possible jobs that they can take before asking which one they are interested in.
+When a user is asking about possible jobs, you MUST format it in a numbered list and provide information for each job, that includes name, location, type, system,  description, and the requirement of each of the job.
 
 Here is a short example:
-User: I would like to search fo a job in programming
-Assistant: Sure! Here are come job vacancies related to programming:
-1. Frontend programmer at Surabaya. [Job description]. You are required to [Job requirement]
-1. Backend programmer at Jakarta. [Job description]. You are required to [Job requirement]
+User: I would like to search fo a job in finance
+Assistant: Sure! Here are come job vacancies related to finance:
+1. Account Finance Manager di Kota Surabaya. [Job description]. Pekerjaan ini memerlukan [Job requirement]
+2. STAFF FINANCE & ACCOUNTING di Kota Jakarta. [Job description]. Pekerjaan ini memerlukan [Job requirement]
 
-You SHOULD display the job with above format only.
+You MUST display the job with above format only.
 """
 
 # If the user asks about the activity in detail, you should at least mention:
@@ -119,7 +119,7 @@ Settings.llm = Ollama(model="llama3.1:8b-instruct-q4_0", base_url="http://127.0.
 Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_name="mxbai-embed-large:latest")
 
 # Main Program
-st.title("RAG Test")
+st.title("Search for jobs")
 
 # Initialize chat history if empty
 if "messages" not in st.session_state:
@@ -130,21 +130,21 @@ if "messages" not in st.session_state:
 
 # Declare Tools
 # function tools    
-async def search_job_vacancy(keyword: str, type: Optional[str], system: Optional[str]) -> list[str]:
+async def search_job_vacancy(keyword: str) -> list[str]:
     """
-    Searches the Alumni Petra database for matching job vacancy entries. Keyword should be one or two relevant words that represents the job name or position searched. type should be 'freelance', 'fulltime', 'parttime', 'internship', or empty. system should be 'remote', 'hybrid', 'onsite', or empty. 
+    Searches the Alumni Petra database for matching job vacancy entries. Keyword should be one to three relevant words that represents the job name or position searched.
     """
 
     r = requests.get('https://panel-alumni.petra.ac.id/api/vacancy', {
         "page": 1,
-        "type": type,
-        "system": system,
+        "type": "",
+        "system": "",
         "level_education": "diploma,sarjana,magister,doktor",
         "keyword": keyword,
         "salary_range": "",
         "id_mh_province": "",
         "id_mh_city": "",
-        "perPage": 10,
+        "perPage": 20,
         "orderBy": "updated_at",
         "order": "DESC",
         "skills": "",
@@ -153,7 +153,6 @@ async def search_job_vacancy(keyword: str, type: Optional[str], system: Optional
 
     data = r.json()
     output = f"# Job results for '{keyword}'"
-
     for d in data["vacancies"]["data"]:
         output += f"""
 Job: {d['position_name']}
@@ -163,10 +162,7 @@ City: {d['mh_city']['name']}
 Description: {d['description']}
 Requirement: {d['requirement']}
 
-
 """
-    print()
-    print(output)
     return output
     
     
