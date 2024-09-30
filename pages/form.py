@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 # Path ke file CSV
-csv_file_path = os.path.join(".." , "docs", "holland", "questions", "holland-questions.csv")
+csv_file_path = os.path.join("docs", "holland", "questions", "holland-questions.csv")
 
 # Membaca file CSV
 questions_df = pd.read_csv(csv_file_path)
@@ -45,4 +45,4 @@ if submitted:
     # Menyimpan hasil ke file CSV baru
     total_scores_df = pd.DataFrame(total_scores.items(), columns=['Type', 'Total Score'])
     total_scores_df.to_csv('riasec_assessment_answer.csv', index=False)
-    st.success("Jawaban anda telah disimpan!")
+    st.success("Jawaban anda telah berhasil disimpan!")
