@@ -36,7 +36,7 @@ with st.form("riasec_form"):
     submitted = st.form_submit_button("Submit")
 
 if submitted:
-    total_scores = questions_df.groupby('Type')['Question'].count().to_dict()
+    total_scores = {type_: 0 for type_ in questions_df['Type'].unique()}
     for index in range(len(questions_df)):
         type_ = questions_df.loc[index, 'Type']
         score = answers[f'answer_{index}']
