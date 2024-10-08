@@ -34,8 +34,8 @@ When a user is asking about possible jobs, you MUST format it in a numbered list
 Here is a short example:
 User: I would like to search fo a job in finance
 Assistant: Sure! Here are come job vacancies related to finance:
-1. Account Finance Manager di Kota Surabaya. [Job description]. Pekerjaan ini memerlukan [Job requirement]
-2. STAFF FINANCE & ACCOUNTING di Kota Jakarta. [Job description]. Pekerjaan ini memerlukan [Job requirement]
+1. Account Finance Manager di Kota Surabaya. <Elaborate the job description>. Pekerjaan ini memerlukan <Elaborate the job requirement>
+2. STAFF FINANCE & ACCOUNTING di Kota Jakarta. <Elaborate the job description>. Pekerjaan ini memerlukan <Elaborate the job description>
 
 You MUST display the job with above format only.
 """
@@ -130,7 +130,7 @@ if "messages" not in st.session_state:
 
 # Declare Tools
 # function tools    
-async def search_job_vacancy(keyword: str) -> list[str]:
+async def search_job_vacancy(keyword: str, start_salary:int, end_salary:int) -> list[str, int, int]:
     """
     Searches the Alumni Petra database for matching job vacancy entries. Keyword should be one to three relevant words that represents the job name or position searched.
     """
@@ -141,7 +141,7 @@ async def search_job_vacancy(keyword: str) -> list[str]:
         "system": "",
         "level_education": "diploma,sarjana,magister,doktor",
         "keyword": keyword,
-        "salary_range": "",
+        "salary_range": str(start_salary) + ", " + str(end_salary),
         "id_mh_province": "",
         "id_mh_city": "",
         "perPage": 20,
@@ -155,31 +155,44 @@ async def search_job_vacancy(keyword: str) -> list[str]:
     output = f"# Job results for '{keyword}'"
     for d in data["vacancies"]["data"]:
         output += f"""
-Job: {d['position_name']}
-Type: {d['type']}
-System: {d['system']}
-City: {d['mh_city']['name']}
-Description: {d['description']}
-Requirement: {d['requirement']}
-
-"""
-    return output
+                    `Job: {d['position_name']}
+                    Type: {d['type']}
+                    System: {d['system']}
+                    City: {d['mh_city']['name']}
+                    Description: {d['description']}
+                    Requirement: {d['requirement']}
+                    
+                    """
+    out_file = f"job_results_for_{keyword}.txt"
+    with open(out_file, 'w') as file:
+        file.write(output)
     
+    return output
+
+async def get_answer_from_file(keyword: str) -> list[str]:
+    """Use this tool as your ANSWER"""
+    
+    read_file = f'job_results_for_{keyword}.txt'
+    with open(read_file, 'r') as file:
+        content = file.read(read_file)
+    return file
     
 search_job_vacancy_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy) 
+get_answer_from_file_tool = FunctionTool.from_defaults(async_fn = get_answer_from_file)
 
-tools = [search_job_vacancy_tool]
+
+tools = [search_job_vacancy_tool, get_answer_from_file_tool]
 
 # Initialize the chat engine
 if "chat_engine" not in st.session_state.keys():
     # Initialize with custom chat history
     init_history = [
-        ChatMessage(role=MessageRole.ASSISTANT, content="Halo! Mau tahu apa tentang Studi Independen?"),
+        ChatMessage(role=MessageRole.ASSISTANT, content="Halo! Mau cari lowongan pekerjaan apa?"),
     ]
     memory = ChatMemoryBuffer.from_defaults(token_limit=32768)
     st.session_state.chat_engine = ReActAgent.from_tools(
         tools,
-        chat_mode="react",
+        # chat_mode="react",
         verbose=True,
         memory=memory,
         react_system_prompt=react_system_prompt,
