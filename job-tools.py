@@ -27,12 +27,12 @@ real-time data. You will always try to be helpful and try to help them
 answering their question. If you don't know the answer, say that you DON'T
 KNOW.
 
-Your primary job is to help people to find jobs related to their interest from Alumni Petra job vacancy database.
+Your primary job is to help people to find jobs related to their interest from Alumni Petra job vacancy database. You should display all the jobs available and NOT just summarize them. Elaborate all informations.
 
 When a user is asking about possible jobs, you MUST format it in a numbered list and provide information for each job, that includes name, location, type, system,  description, and the requirement of each of the job.
 
 Here is a short example:
-User: I would like to search fo a job in finance
+User: I would like to search a job in finance
 Assistant: Sure! Here are come job vacancies related to finance:
 1. Account Finance Manager di Kota Surabaya. <Elaborate the job description>. Pekerjaan ini memerlukan <Elaborate the job requirement>
 2. STAFF FINANCE & ACCOUNTING di Kota Jakarta. <Elaborate the job description>. Pekerjaan ini memerlukan <Elaborate the job description>
@@ -130,9 +130,9 @@ if "messages" not in st.session_state:
 
 # Declare Tools
 # function tools    
-async def search_job_vacancy(keyword: str, start_salary:int, end_salary:int) -> list[str, int, int]:
+async def search_job_vacancy(keyword: str, start_salary:int, end_salary:int, show_explaination:bool) -> list[str, int, int]:
     """
-    Searches the Alumni Petra database for matching job vacancy entries. Keyword should be one to three relevant words that represents the job name or position searched.
+    Searches the Alumni Petra database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. Each job should be shown in a numbered list format. Keyword should be configured to one to three relevant words that MUST represents the job name or position. start_salary represent the minimal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 0. end_salary represent the maximal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 1000000000. show_explaination by default MUST be false, except if the user wanted the details of the job it should be true.
     """
 
     r = requests.get('https://panel-alumni.petra.ac.id/api/vacancy', {
@@ -153,16 +153,22 @@ async def search_job_vacancy(keyword: str, start_salary:int, end_salary:int) -> 
 
     data = r.json()
     output = f"# Job results for '{keyword}'"
+    idx = 1
     for d in data["vacancies"]["data"]:
-        output += f"""
-                    `Job: {d['position_name']}
-                    Type: {d['type']}
-                    System: {d['system']}
-                    City: {d['mh_city']['name']}
-                    Description: {d['description']}
-                    Requirement: {d['requirement']}
-                    
-                    """
+        if show_explaination:
+            output += f"""
+                        {idx}. This job is to work as a {d['type']} {d['position_name']} at {d['mh_city']['name']} city and you must work {d['system']}. 
+                        The job will{d['description']}. In order to do this job you must {d['requirement']}.
+                        """
+        else:
+            output += f"""
+                        {idx}. This job is to work as a {d['type']} {d['position_name']} at {d['mh_city']['name']} city and you must work {d['system']}. 
+                        
+                        """
+        
+        idx+=1
+    if len(data["vacancies"]["data"]) == 0:
+        output += "No results found."
     out_file = f"job_results_for_{keyword}.txt"
     with open(out_file, 'w') as file:
         file.write(output)
@@ -181,7 +187,8 @@ search_job_vacancy_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy
 get_answer_from_file_tool = FunctionTool.from_defaults(async_fn = get_answer_from_file)
 
 
-tools = [search_job_vacancy_tool, get_answer_from_file_tool]
+tools = [search_job_vacancy_tool]
+# tools = [search_job_vacancy_tool, get_answer_from_file_tool]
 
 # Initialize the chat engine
 if "chat_engine" not in st.session_state.keys():
