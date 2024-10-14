@@ -215,7 +215,7 @@ async def get_riasec_personality_test_result() -> str:
     """
     Provides information regarding user's personality. Use this to give better recommendations on job vacancies that were previously asked by the user. DO NOT SHOW NEW JOB LISTINGS. Only show the ones that had been shown before to the user. 
     """
-    riasec_result_data = pd.read_csv('riasec_assessment_answer.csv')
+    riasec_result_data = pd.read_csv('../answers/riasec_assessment_answer.csv')
     riasec_result_key_values = [{row['Type']: row['Total Score']} for index, row in riasec_result_data.iterrows()]
     top_3 = sorted(riasec_result_key_values, key=lambda x: list(x.values())[0], reverse=True)[:3]
     riasec_docs = SimpleDirectoryReader(input_dir='../docs/').load_data()
