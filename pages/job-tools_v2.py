@@ -147,7 +147,7 @@ if "messages" not in st.session_state:
 
 # Declare Tools
 # function tools    
-async def search_job_vacancy(keyword: str, start_salary:int = 0, end_salary:int = 10000000, show_explaination:bool = True) -> str:
+async def search_job_vacancy(keyword: str, start_salary:int = 0, end_salary:int = 100000000, show_explaination:bool = True) -> str:
     """
     Searches the Alumni Petra database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. Each job should be shown in a numbered list format. Keyword should be configured to one to three relevant words that MUST represents the job name or position. start_salary represent the minimal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 0. end_salary represent the maximal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 1000000000. show_explaination by default MUST be true, except if the user wanted the details of the job it should be false.
     """
