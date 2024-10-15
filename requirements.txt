@@ -4,6 +4,7 @@ llama-index-llms-ollama
 llama-index-vector-stores-qdrant
 llama-index-embeddings-ollama
 llama-index-retrievers-bm25
+llama_index.readers.json
 
 qdrant_client
 fastembed
