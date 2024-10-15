@@ -43,3 +43,16 @@ if submitted:
     total_scores_df = pd.DataFrame(total_scores.items(), columns=['Type', 'Total Score'])
     total_scores_df.to_csv('../answers/riasec_assessment_answer.csv', index=False)
     st.success("Jawaban anda telah berhasil disimpan!")
+    top_3 = total_scores_df.sort_values(by='Total Score', ascending=False).head(3)
+     # Displaying the results in a box with st.markdown and table
+    st.markdown(
+        f"""
+        <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 10px; background-color: #f9f9f9;">
+            <h3 style="color: #4CAF50;">Hasil Tes Anda</h3>
+            <h5>{top_3.iloc[0, 0]}</h5>
+            <h5>{top_3.iloc[1, 0]}</h5>
+            <h5>{top_3.iloc[2, 0]}</h5>
+        </div>
+        """, unsafe_allow_html=True
+    )
+    
