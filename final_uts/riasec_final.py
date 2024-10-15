@@ -31,7 +31,7 @@ answering their question. If you don't know the answer, say that you DON'T
 KNOW.
 
 Jawablah semua dalam Bahasa Indonesia.
-Anda adalah asesor yang memiliki tugas untuk membantu pengguna untuk mencari karir berdasarkan aspek teratas holland personality yang dimiliki oleh pengguna. Aspek teratas yang dimiliki user adalah {top_3[0]}, {top_3[1]}, {top_3[2]}. JANGAN SEBUTKAN ASPEK LAIN SELAIN TIGA ASPEK TERSEBUT. Gunakan kata-kata yang FRIENDLY, mudah dimengerti dan RAMAH serta gaul sehingga mudah untuk dibaca anak muda.
+Anda adalah asesor yang memiliki tugas untuk membantu pengguna untuk mencari karir berdasarkan aspek teratas holland personality yang dimiliki oleh pengguna. Aspek teratas yang dimiliki user adalah {top_3[0]}, {top_3[1]}, {top_3[2]}. JANGAN SEBUTKAN ASPEK LAIN SELAIN TIGA ASPEK TERSEBUT. Berikan analisis serta 5 pekerjaan yang cocok untuk user.
 
 Percakapan sejauh ini:
 """
@@ -40,28 +40,8 @@ Settings.llm = Ollama(model="llama3.1:latest", base_url="http://127.0.0.1:11434"
 Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_name="mxbai-embed-large:latest") 
 
 holland_docs = SimpleDirectoryReader("../docs").load_data()
-docs_index = VectorStoreIndex.from_documents(holland_docs)
+index = VectorStoreIndex.from_documents(holland_docs)
 
-retriever = docs_index.as_retriever()
-
-condense_question_prompt = """
-Diberikan suatu percapakan (antara manusia dan asisten) dan sebuah pesan lanjutan dari manusia. Ubah pesan lanjutan menjadi pertanyaan independen yang mencakup semua konteks relevan
-dari percakapan sebelumnya.
-
-<Chat History>
-{chat_history}
-
-<Follow Up Message>
-{question}
-
-<Standalone question>
-"""
-
-
-context_question_prompt = "Anda adalah ahli konsultasi karir yang dapat memberikan rekomendasi pekerjaan berdasarkan hasil tes RIASEC pengguna, yaitu " + list(top_3[0].keys())[0] + ", " +  list(top_3[1].keys())[0] + ", " + list(top_3[2].keys())[0] + ". Ini adalah dokumen yang mungkin relevan terhadap konteks:\n\n {context_str} \n\nInstruksi: Gunakan riwayat obrolan sebelumnya, atau konteks di atas, untuk berinteraksi dan membantu pengguna. Berikan analisis serta 5 pekerjaan yang cocok untuk user."
-
-print("context: ", context_question_prompt)
-print("system: ", system_prompt)
 st.title("Rekomendasi Karir Berdasarkan Hasil Tes RIASEC 💼")
 # st.write("Lorem ipsum dolor sit amet")
 
@@ -74,12 +54,10 @@ if "messages" not in st.session_state:
 if "chat_engine" not in st.session_state:
 
     memory = ChatMemoryBuffer.from_defaults(token_limit=50384)
-    st.session_state.chat_engine = CondensePlusContextChatEngine(
-    retriever=retriever,
-    condense_prompt=condense_question_prompt,
-    context_prompt = context_question_prompt,
+    st.session_state.chat_engine = index.as_chat_engine(
+    chat_mode="context",
     memory=memory,
-    llm=Settings.llm,
+    system_prompt= system_prompt,
     verbose=True
 )
 
