@@ -29,7 +29,7 @@ real-time data. You will always try to be helpful and try to help them
 answering their question. If you don't know the answer, say that you DON'T
 KNOW.
 
-Your primary job is to help people to find jobs related to their interest from Alumni Petra job vacancy database. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools.
+Your primary job is to help people to find jobs from Alumni Petra job vacancy database. You help them by matching riasec test result to the jobs available. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools. You should explain WHY the jobs MATCH people's personality result.
 
 
 When a user asks about possible jobs, you MUST mention all of the jobs details such as:
@@ -147,9 +147,9 @@ if "messages" not in st.session_state:
 
 # Declare Tools
 # function tools    
-async def search_job_vacancy(keyword: str, start_salary:int = 0, end_salary:int = 100000000, show_explaination:bool = True) -> str:
+async def search_job_vacancy(keyword: str, start_salary:int = 500000, end_salary:int = 100000000, show_explaination:bool = True) -> str:
     """
-    Searches the Alumni Petra database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. Each job should be shown in a numbered list format. Keyword should be configured to one to three relevant words that MUST represents the job name or position. start_salary represent the minimal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 0. end_salary represent the maximal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 1000000000. show_explaination by default MUST be true, except if the user wanted the details of the job it should be false.
+    Searches the Alumni Petra database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. Each job should be shown in a numbered list format. Keyword should be configured to one to three relevant words that MUST represents the job name or position. start_salary represent the minimal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 500000. end_salary represent the maximal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 100000000. show_explaination by default MUST be true, except if the user wanted the details of the job it should be false.
     """
 
     r = requests.get('https://panel-alumni.petra.ac.id/api/vacancy', {
@@ -205,7 +205,7 @@ async def search_job_vacancy(keyword: str, start_salary:int = 0, end_salary:int 
     if len(data["vacancies"]["data"]) == 0:
         output += "No results found."
 
-    output += "\n\n Show this result to user DIRECTLY, with NO summarization"
+    output += "\n\n Show this result to user DIRECTLY, with NO summarization but FORMAT IT NICELY."
     
     return output
 
