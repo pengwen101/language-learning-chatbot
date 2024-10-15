@@ -2,19 +2,18 @@ import streamlit as st
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
-from llama_index.readers.file import CSVReader
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core import Settings
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.chat_engine import CondensePlusContextChatEngine
-from llama_index.core.retrievers import QueryFusionRetriever
-from llama_index.core.tools import BaseTool, FunctionTool
+from llama_index.core.tools import FunctionTool
 from llama_index.core.agent import ReActAgent
-from typing import Optional
 from llama_index.core import PromptTemplate
 from bs4 import BeautifulSoup
 import pandas as pd
 import nest_asyncio
+import logging
+import requests
+import sys
 nest_asyncio.apply()
 
 system_prompt = """
@@ -103,11 +102,6 @@ Below is the current conversation consisting of interleaving human and assistant
 
 """
 react_system_prompt = PromptTemplate(react_system_header_str)
-
-import sys
-
-import logging
-import requests
 
 logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))

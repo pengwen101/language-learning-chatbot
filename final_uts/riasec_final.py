@@ -1,22 +1,9 @@
 from llama_index.llms.ollama import Ollama
-from llama_index.readers.file import CSVReader
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
-from llama_index.core.node_parser import SentenceWindowNodeParser, SentenceSplitter
-from llama_index.core.tools import QueryEngineTool
-from llama_index.core.query_engine import RouterQueryEngine
 from llama_index.core import Settings
-from llama_index.llms.openai import OpenAI
-from pathlib import Path
-from llama_index.core import PromptTemplate
-from llama_index.core.llms import ChatMessage, MessageRole
-from llama_index.core.chat_engine import CondensePlusContextChatEngine
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.objects import ObjectIndex
-from llama_index.core.query_engine import ToolRetrieverRouterQueryEngine
 import streamlit as st
-import os
-from collections import defaultdict
 import pandas as pd
 
 riasec_result_data = pd.read_csv('../answers/riasec_assessment_answer.csv')
