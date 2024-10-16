@@ -86,7 +86,7 @@ def reindex(client, path):
     st.success("Successfully reset index")
 
 
-path = "../docs/"
+path = "./docs/"
 
 # Create Qdrant client & store
 if "chatbot" not in st.session_state:

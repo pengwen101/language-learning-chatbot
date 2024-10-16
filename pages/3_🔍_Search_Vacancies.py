@@ -109,15 +109,6 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 Settings.llm = Ollama(model="llama3.1:8b-instruct-q4_0", base_url="http://127.0.0.1:11434", system_prompt=system_prompt, temperature=0)
 Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_name="mxbai-embed-large:latest")
 
-# Main Program
-st.title("Search for Jobs On Alumni Website! 🔍")
-
-# Initialize chat history if empty
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant",
-         "content": "Halo! What job do you want to search for? 😊"}
-    ]
 
 # Declare Tools
 # function tools    
@@ -134,9 +125,9 @@ async def get_id_mh_province(provinces:str) -> str:
     return ""
             
     
-async def search_job_vacancy(keyword: str, start_salary:int = 500000, end_salary:int = 100000000, show_explaination:bool = True, id_mh_province:int = "") -> str:
+async def search_job_vacancy(keyword: str = "", start_salary:int = 500000, end_salary:int = 100000000, show_explaination:bool = True, id_mh_province:int = "") -> str:
     """
-    Searches the Alumni Petra database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. If the user specifies the province, you MUST GO TO OTHER TOOL TO GET province id first. Each job should be shown in a numbered list format. Keyword should be configured to one to three relevant words that MUST represents the job name or position. start_salary represent the minimal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 500000. end_salary represent the maximal monthly salary in IDR (Indonesian Rupiah) IF AND ONLY IF user type a specific nominal, otherwise the default value MUST be 100000000. 
+    Searches the Alumni Petra database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. If the user specifies the province, you MUST GO TO OTHER TOOL TO GET province id first. Each job should be shown in a numbered list format. Keyword should be configured to one to three relevant words that MUST represents the job name or position. 
     
     show_explaination by default MUST be true, except if the user wanted the details of the job it should be false.
     """
@@ -226,14 +217,25 @@ get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province)
 
 tools = [search_job_vacancy_tool, get_job_vacancy_detail_tool, get_province_id_tool]
 
+
+# Main Program
+st.title("Search for Jobs On Alumni Website! 🔍")
+
+# Initialize chat history if empty
+if "messages_job" not in st.session_state:
+    st.session_state.messages_job = [
+        {"role": "assistant",
+         "content": "Halo! What job do you want to search for? 😊"}
+    ]
+
 # Initialize the chat engine
-if "chat_engine" not in st.session_state.keys():
+if "chat_engine_job" not in st.session_state.keys():
     # Initialize with custom chat history
     init_history = [
         ChatMessage(role=MessageRole.ASSISTANT, content="Halo! Mau cari lowongan pekerjaan apa?"),
     ]
-    memory = ChatMemoryBuffer.from_defaults(token_limit=64768)
-    st.session_state.chat_engine = ReActAgent.from_tools(
+    memory = ChatMemoryBuffer.from_defaults(token_limit=32768)
+    st.session_state.chat_engine_job = ReActAgent.from_tools(
         tools,
         chat_mode="react",
         verbose=True,
@@ -243,10 +245,10 @@ if "chat_engine" not in st.session_state.keys():
         llm=Settings.llm
     )
 
-    print(st.session_state.chat_engine.get_prompts())
+    print(st.session_state.chat_engine_job.get_prompts())
 
 # Display chat messages from history on app rerun
-for message in st.session_state.messages:
+for message in st.session_state.messages_job:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
@@ -256,12 +258,12 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages_job.append({"role": "user", "content": prompt})
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            response_stream = st.session_state.chat_engine.stream_chat(prompt)
+            response_stream = st.session_state.chat_engine_job.stream_chat(prompt)
             st.write_stream(response_stream.response_gen)
 
     # Add user message to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response_stream.response})
+    st.session_state.messages_job.append({"role": "assistant", "content": response_stream.response})
