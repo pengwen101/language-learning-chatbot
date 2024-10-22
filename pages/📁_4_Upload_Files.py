@@ -5,7 +5,7 @@ from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.storage.storage_context import StorageContext
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings
 from llama_index.readers.json import JSONReader
-from llama_index.embeddings.fastembed import FastEmbedEmbedding
+from llama_index.embeddings.ollama import OllamaEmbedding
 
 
 def upload_files(files, path):
@@ -86,7 +86,7 @@ def reindex(client, path):
     st.success("Successfully reset index")
 
 
-path = "./docs/"
+path = "./docs"
 
 # Create Qdrant client & store
 if "chatbot" not in st.session_state:
@@ -94,7 +94,7 @@ if "chatbot" not in st.session_state:
 else:
     chatbot = st.session_state.chatbot
     st.session_state.client = chatbot.client
-Settings.embed_model = FastEmbedEmbedding(model_name="intfloat/multilingual-e5-large", cache_dir="../fastembed_cache")
+Settings.embed_model = OllamaEmbedding(base_url = 'http://127.0.0.1:11434', model_name="mxbai-embed-large:latest")
 
 tab1, tab2 = st.tabs(["Upload", "Management"])
 with tab1:
