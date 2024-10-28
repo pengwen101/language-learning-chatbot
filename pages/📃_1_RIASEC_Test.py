@@ -42,6 +42,9 @@ if submitted:
     # Menyimpan hasil ke file CSV baru
     total_scores_df = pd.DataFrame(total_scores.items(), columns=['Type', 'Total Score'])
     print(total_scores_df)
+    directory = './answers'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     file_path = './answers/riasec_assessment_answer.csv'
     if os.path.exists(file_path):
         os.remove(file_path)
