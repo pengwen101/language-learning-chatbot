@@ -16,13 +16,17 @@ import requests
 import sys
 nest_asyncio.apply()
 
+riasec_result_data = pd.read_csv('./answers/riasec_assessment_answer.csv')
+riasec_result_key_values = [{row['Type']: row['Total Score']} for index, row in riasec_result_data.iterrows()]
+top_3 = sorted(riasec_result_key_values, key=lambda x: list(x.values())[0], reverse=True)[:3]
+
 system_prompt = """
 You are a multi-lingual career advisor expert who has knowledge based on 
 real-time data. You will always try to be helpful and try to help them 
 answering their question. If you don't know the answer, say that you DON'T
 KNOW.
 
-Your primary job is to help people to find jobs from Alumni Petra job vacancy database. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools.
+Your primary job is to help people to find jobs from API Jobs Developer database. You help them by creating a list of keywords from people's riasec result and find those keywords in the database. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools. You should explain WHY the jobs MATCH people's personality result.
 
 
 When a user asks about possible jobs, you MUST mention all of the jobs details such as:
@@ -113,109 +117,94 @@ Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_
 # Declare Tools
 # function tools    
 
-async def get_id_mh_province(provinces:str) -> str:
+# async def get_id_mh_province(provinces:str) -> str:
+#     """
+#     Use this tool if user specify the province, NOT the city. Returns province ID from user query. The province ID from this tool will be used for the tool 'search_job_vacancy'
+#     """
+#     r = requests.get('https://panel-alumni.petra.ac.id/api/province')
+#     data = r.json()
+#     for d in data['provinces']:
+#         if provinces.lower() == d['name'].lower():
+#             return d['id']
+#     return ""
+
+async def get_keywords_from_riasec_result() -> str:
     """
-    Use this tool if user specify the province, NOT the city. Returns province ID from user query. The province ID from this tool will be used for the tool 'search_job_vacancy'
+    Provides ONE keyword matching with user's personality. The keyword MUST BE for job search. Use this as the parameter 'keyword' used in other tool. 
     """
-    r = requests.get('https://panel-alumni.petra.ac.id/api/province')
-    data = r.json()
-    for d in data['provinces']:
-        if provinces.lower() == d['name'].lower():
-            return d['id']
-    return ""
-            
+    riasec_docs = SimpleDirectoryReader(input_dir='./docs/').load_data()
+    index = VectorStoreIndex.from_documents(riasec_docs)
+    query_engine = index.as_query_engine()
+    query = f"Return only ONE KEYWORD that is suited for JOB SEARCH that match with {top_3[0]}, {top_3[1]}, {top_3[2]} personality"
+    response = query_engine.query(query)
     
-async def search_job_vacancy(keyword: str = "", start_salary:int = 500000, end_salary:int = 100000000, show_explaination:bool = True, id_mh_province:int = "") -> str:
-    """
-    Searches the Alumni Petra database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. If the user specifies the province, you MUST GO TO OTHER TOOL TO GET province id first. Each job should be shown in a numbered list format. Keyword should be configured to one to three relevant words that MUST represents the job name or position. 
+    return response
     
-    show_explaination by default MUST be true, except if the user wanted the details of the job it should be false.
+    
+async def search_job_vacancy(keyword: str) -> str:
     """
+        Searches the API Jobs Developer database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. Each job should be shown in a numbered list format. Keyword should be configured to one relevant word that MUST represents the job name or position in ENGLISH. 
+    """
+    
+    headers = {
+        'apikey': 'c1f4d885281ebe8b65295a84df1f07b253ae56ad68a5d48a5fc93604ce269e02',  
+        'Content-Type': 'application/json',
+    }
 
-    r = requests.get('https://panel-alumni.petra.ac.id/api/vacancy', {
-        "page": 1,
-        "type": "freelance,fulltime,parttime,internship",
-        "system": "onsite,remote,hybrid",
-        "level_education": "diploma,sarjana,magister,doktor",
-        "keyword": keyword,
-        "salary_range": str(start_salary) + ", " + str(end_salary),
-        "id_mh_province": id_mh_province,
-        "id_mh_city": "",
-        "perPage": 5,
-        "orderBy": "updated_at",
-        "order": "DESC",
-        "skills": "",
-        "prody": "",
-    })
+    data = {
+        "q": keyword,
+        # "country": "indonesia",
+    }
 
-    data = r.json()
-    output = f"# Job results for '{keyword}'"
-    idx = 1
-    for d in data["vacancies"]["data"]:
-        salary_start = d['salary_start'] if d['salary_start'] is not None else ''
-        salary_end = d['salary_end'] if d['salary_end'] is not None else ''
-        if(not salary_start and not salary_end):
-            salary_info = 'Tidak ada informasi'
-        else:
-            salary_info = str(salary_start) + " - " + str(salary_end)
-        if show_explaination:
-            output += f"""
-                        {idx}. {d['position_name']} at {d['mh_company']['name']}
-                        Lokasi = {d['mh_city']['name']}
-                        Tipe = {d['type']}
-                        Sistem = {d['system']}
-                        Level Pendidikan = {d['level_education']}
-                        Range Gaji = {salary_info}
-                        Batas Apply = {d["expired_date"]}
-                        Deskripsi = {BeautifulSoup(d['description'], 'html.parser').get_text()}
-                        Job Requirements = {BeautifulSoup(d['requirement'], 'html.parser').get_text()}
-                        slug = {d['slug']} (DO NOT show this to the user)
-                        """
-        else:
-            output += f"""
-                        {idx}. {d['position_name']} at {d['mh_company']['name']}
-                        Lokasi = {d['mh_city']['name']}
-                        Tipe = {d['type']}
-                        Sistem = {d['system']}
-                        Level Pendidikan = {d['level_education']}
-                        Range Gaji = {salary_info}
-                        Batas Apply = {d["expired_date"]}
-                        slug = {d['slug']} (DO NOT show this to the user)
-                        """
-        
-        idx+=1
-    if len(data["vacancies"]["data"]) ==0:
-        output += "No results found."
+    response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json=data)
+    data = response.json()
 
-    output += "\n\n Show this result to user DIRECTLY, with NO summarization but FORMAT IT NICELY. If it returns nothing, say to user that NO JOBS are available for user query."
+    output = f"# Job results for '{keyword}'\n"
+    jobs = data.get("hits", [])
+    
+    if not jobs:
+        return "No jobs available for your query."
+
+    # Formatting each job listing
+    for idx, job in enumerate(jobs[:5], 1):  # Limiting to 5 results
+        output += f"""
+        {idx}. {job['title']} at {job.get('hiringOrganizationName', 'N/A')}
+        Language: {job.get('language', 'N/A')}
+        Description: {job.get('description', 'N/A')}
+        Website URL: {job.get('url', 'N/A')}
+        """
+
+    output += "\n\n Show this result to user DIRECTLY, with NO summarization. Make sure to ALWAYS SHOW the WEBSITE URL. If it returns nothing, say to user that NO JOBS are available for user query."
     
     return output
-    
+   
+
     
 
-async def get_job_vacancy_slug_detail(slug: str) -> str:
-    """
-        Provides detailed information regarding the vacancy. slug must be a specific vacancy slug.
-    """
+# async def get_job_vacancy_slug_detail(slug: str) -> str:
+#     """
+#         Provides detailed information regarding the vacancy. slug must be a specific vacancy slug.
+#     """
     
-    r = requests.get(f"https://panel-alumni.petra.ac.id/api/vacancy/{slug}")
-    data = r.json()["vacancy"]
-    salary_start = data['salary_start'] if data['salary_start'] is not None else ''
-    salary_end = data['salary_end'] if data['salary_end'] is not None else ''
-    if(not salary_start and not salary_end):
-        salary_info = 'Tidak ada informasi'
-    else:
-        salary_info = str(salary_start) + " - " + str(salary_end)
+#     r = requests.get(f"https://panel-alumni.petra.ac.id/api/vacancy/{slug}")
+#     data = r.json()["vacancy"]
+#     salary_start = data['salary_start'] if data['salary_start'] is not None else ''
+#     salary_end = data['salary_end'] if data['salary_end'] is not None else ''
+#     if(not salary_start and not salary_end):
+#         salary_info = 'Tidak ada informasi'
+#     else:
+#         salary_info = str(salary_start) + " - " + str(salary_end)
     
-    return f"Pekerjaan ini adalah sebagai {data['position_name']} di {data['mh_company']['name']} di kota {data['mh_city']['name']} dengan sistem {data['system']} dan tipe {data['type']} dengan range gaji {salary_info}. Untuk apply, anda harus memiliki level pendidikan {data['level_education']}. Di dalam pekerjaan ini user akan mengerjakan beberapa job description, yaitu: {BeautifulSoup(data['description'], 'html.parser').get_text()}. Untuk mendaftar ke pekerjaan ini, user harus memiliki requirements sebagai berikut: {BeautifulSoup(data['requirement'], 'html.parser').get_text()}. Batas apply ke pekerjaan ini adalah {data['expired_date']}"
+#     return f"Pekerjaan ini adalah sebagai {data['position_name']} di {data['mh_company']['name']} di kota {data['mh_city']['name']} dengan sistem {data['system']} dan tipe {data['type']} dengan range gaji {salary_info}. Untuk apply, anda harus memiliki level pendidikan {data['level_education']}. Di dalam pekerjaan ini user akan mengerjakan beberapa job description, yaitu: {BeautifulSoup(data['description'], 'html.parser').get_text()}. Untuk mendaftar ke pekerjaan ini, user harus memiliki requirements sebagai berikut: {BeautifulSoup(data['requirement'], 'html.parser').get_text()}. Batas apply ke pekerjaan ini adalah {data['expired_date']}"
 
     
 search_job_vacancy_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy) 
-get_job_vacancy_detail_tool = FunctionTool.from_defaults(async_fn=get_job_vacancy_slug_detail) 
-get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
+get_keywords_from_riasec_result = FunctionTool.from_defaults(async_fn=get_keywords_from_riasec_result)
+# get_job_vacancy_detail_tool = FunctionTool.from_defaults(async_fn=get_job_vacancy_slug_detail) 
+# get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
 
 
-tools = [search_job_vacancy_tool, get_job_vacancy_detail_tool, get_province_id_tool]
+tools = [search_job_vacancy_tool, get_keywords_from_riasec_result]
 
 
 # Main Program
