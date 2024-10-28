@@ -26,7 +26,8 @@ DEBUG=False
 ```bash
 python app.py
 ```
-By default, the application runs on http://127.0.0.1:5000/.
+By default, the application runs on http://127.0.0.1:5000/
+
 2. Send a POST request to fetch job listings:
 
 Use a tool like Postman or curl to send a request to the API endpoint.
