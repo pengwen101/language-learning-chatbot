@@ -69,6 +69,7 @@ def fetch_from_api():
         return jsonify(cached_data)
 
     # Set up headers for the external API request
+    # print(os.getenv("APIJOB_API_KEY"))
     headers = {
         'apikey': os.getenv("APIJOB_API_KEY"),
         'Content-Type': 'application/json',
