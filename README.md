@@ -36,9 +36,9 @@ Installation:
 
 ```bash
 pip install -r requirements.txt
-Run the Project: Launch the application with Streamlit:
 ```
 
+Run the Project: Launch the application with Streamlit:
 ```bash
 streamlit run Hello.py # --server.port=xxxx --server.address=127.0.0.2
 ```

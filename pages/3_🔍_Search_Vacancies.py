@@ -61,6 +61,9 @@ You have access to a wide variety of tools. You are responsible for using
 the tools in any sequence you deem appropriate to complete the task at hand.
 This may require breaking the task into subtasks and using different tools
 to complete each subtask.
+You also have access to two job search tools: `alumni_job_tool` and `search_job_vacancy_tool`.
+You should use `alumni_job_tool` first whenever possible. If `alumni_job_tool` returns no results or is not available, only then should you use `search_job_vacancy_tool`.
+Make sure to say which one did you get from, If you get from alumni_job_tool always say You found it at alumni petra website, and if not always say I didn't find anything on alumni petra, here's some vacancies from apijobs
 
 You have access to the following tools:
 {tool_desc}
@@ -139,7 +142,65 @@ async def get_keywords_from_riasec_result() -> str:
     response = query_engine.query(query)
     
     return response
-    
+
+async def search_job_vacancy_riasec(keyword: str = "", start_salary:int = 500000, end_salary:int = 100000000, show_explaination:bool = True, id_mh_province:int = "") -> str:
+    """
+    Searches the Alumni Petra database for a list of job vacancies. If a province is specified, retrieve its ID first. Jobs are shown in a numbered list format, with an explanation if requested.
+    """
+    r = requests.get('https://panel-alumni.petra.ac.id/api/vacancy', {
+        "page": 1,
+        "type": "freelance,fulltime,parttime,internship",
+        "system": "onsite,remote,hybrid",
+        "level_education": "diploma,sarjana,magister,doktor",
+        "keyword": keyword,
+        "salary_range": str(start_salary) + ", " + str(end_salary),
+        "id_mh_province": id_mh_province,
+        "id_mh_city": "",
+        "perPage": 3,
+        "orderBy": "updated_at",
+        "order": "DESC",
+        "skills": "",
+        "prody": "",
+    })
+
+    data = r.json()
+    if len(data["vacancies"]["data"]) == 0:
+        return "No jobs available for your query."
+
+    output = "SAY This is what I found on Alumni Petra:\n"
+    idx = 1
+    for d in data["vacancies"]["data"]:
+        salary_start = d['salary_start'] if d['salary_start'] is not None else ''
+        salary_end = d['salary_end'] if d['salary_end'] is not None else ''
+        salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else 'Tidak ada informasi'
+        
+        if show_explaination:
+            output += f"""
+                {idx}. {d['position_name']} at {d['mh_company']['name']}
+                Lokasi: {d['mh_city']['name']}
+                Tipe: {d['type']}
+                Sistem: {d['system']}
+                Level Pendidikan: {d['level_education']}
+                Range Gaji: {salary_info}
+                Batas Apply: {d["expired_date"]}
+                Deskripsi: {BeautifulSoup(d['description'], 'html.parser').get_text()}
+                Job Requirements: {BeautifulSoup(d['requirement'], 'html.parser').get_text()}
+            """
+        else:
+            output += f"""
+                {idx}. {d['position_name']} at {d['mh_company']['name']}
+                Lokasi: {d['mh_city']['name']}
+                Tipe: {d['type']}
+                Sistem: {d['system']}
+                Level Pendidikan: {d['level_education']}
+                Range Gaji: {salary_info}
+                Batas Apply: {d["expired_date"]}
+            """
+        idx += 1
+
+    output += "\n\nShow this result to user directly with no summarization, and format it nicely."
+    return output
+
     
 async def search_job_vacancy(keyword: str) -> str:
     """
@@ -200,11 +261,12 @@ async def search_job_vacancy(keyword: str) -> str:
     
 search_job_vacancy_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy) 
 get_keywords_from_riasec_result = FunctionTool.from_defaults(async_fn=get_keywords_from_riasec_result)
+alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
 # get_job_vacancy_detail_tool = FunctionTool.from_defaults(async_fn=get_job_vacancy_slug_detail) 
 # get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
 
 
-tools = [search_job_vacancy_tool, get_keywords_from_riasec_result]
+tools = [alumni_job_tool, search_job_vacancy_tool, get_keywords_from_riasec_result]
 
 
 # Main Program
@@ -224,6 +286,14 @@ if "chat_engine_job" not in st.session_state.keys():
         ChatMessage(role=MessageRole.ASSISTANT, content="Halo! Mau cari lowongan pekerjaan apa?"),
     ]
     memory = ChatMemoryBuffer.from_defaults(token_limit=32768)
+
+    async def custom_logic(message):
+        # First, attempt to use alumni_job_tool
+        response = await alumni_job_tool.execute(input=message)
+        if "No results found" in response:  # Or any other indication of no results
+            # Fall back to search_job_vacancy_tool if no results from alumni_job_tool
+            response = await search_job_vacancy_tool.execute(input=message)
+        return response
     st.session_state.chat_engine_job = ReActAgent.from_tools(
         tools,
         chat_mode="react",
@@ -231,8 +301,10 @@ if "chat_engine_job" not in st.session_state.keys():
         memory=memory,
         react_system_prompt=react_system_prompt,
         # retriever=retriever,
+        custom_response_handler=custom_logic,
         llm=Settings.llm
     )
+
 
     print(st.session_state.chat_engine_job.get_prompts())
 
