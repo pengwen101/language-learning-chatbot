@@ -28,8 +28,12 @@ def is_cache_valid():
 def load_cache():
     """Load data from the cache file."""
     if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(CACHE_FILE, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print("Cache file is invalid JSON. Resetting cache.")
+            return {}
     return {}
 
 def save_cache(data, params_key):

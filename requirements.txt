@@ -10,3 +10,5 @@ qdrant_client
 fastembed
 streamlit==1.32.2
 flask
+duckduckgo_search
+git+https://github.com/openai/swarm.git

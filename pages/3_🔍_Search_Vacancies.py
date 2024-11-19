@@ -217,8 +217,31 @@ async def search_job_vacancy(keyword: str) -> str:
         # "country": "indonesia",
     }
 
-    response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json=data)
-    data = response.json()
+#     try:
+#     # Make a POST request to the Flask API
+#     response = requests.post(url, json=params)
+    
+#     # Check if the request was successful
+#     if response.status_code == 200:
+#         # Parse the JSON response
+#         data = response.json()
+#         print("Data from API:", json.dumps(data, indent=4))
+#     else:
+#         print(f"Failed to fetch data: {response.status_code}")
+#         print(response.json())  # Display error details if any
+# except requests.exceptions.RequestException as e:
+#     print(f"An error occurred: {e}")
+    url = "http://127.0.0.1:5000/api/fetch"
+    try:
+        response = requests.post(url, json=data)
+        if response.status_code == 200:
+            data = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json=data)
+        data = response.json()
+    # response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json=data)
+    # data = response.json()
 
     output = f"# Job results for '{keyword}'\n"
     jobs = data.get("hits", [])
