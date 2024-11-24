@@ -128,48 +128,69 @@ def transfer_to_alumni_searcher():
     """Transfer job searcher immediately."""
     return job_searcher_alumni_agent
 
+def format_job_data(data, show_explanation=True):
+    """
+    Format job data for display. Handles missing fields gracefully.
+    """
+    formatted_jobs = []
+    for idx, job in enumerate(data, start=1):
+        # Safely retrieve nested fields
+        position = job.get("position_name", "N/A")
+        company = job.get("mh_company", {}).get("name", "N/A")
+        location = job.get("mh_city", {}).get("name", "N/A")
+        job_type = job.get("type", "N/A")
+        system = job.get("system", "N/A")
+        education = job.get("level_education", "N/A")
+        salary_start = job.get("salary_start", "")
+        salary_end = job.get("salary_end", "")
+        salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else "Not specified"
+        apply_deadline = job.get("expired_date", "N/A")
+        description = (
+            BeautifulSoup(job.get("description", ""), "html.parser").get_text()
+            if show_explanation
+            else ""
+        )
+        requirements = (
+            BeautifulSoup(job.get("requirement", ""), "html.parser").get_text()
+            if show_explanation
+            else ""
+        )
+
+        # Append formatted job entry
+        formatted_jobs.append(
+            {
+                "index": idx,
+                "position": position,
+                "company": company,
+                "location": location,
+                "type": job_type,
+                "system": system,
+                "education": education,
+                "salary": salary_info,
+                "deadline": apply_deadline,
+                "description": description,
+                "requirements": requirements,
+            }
+        )
+    return formatted_jobs
 
 # Define Swarm Agents
 job_searcher_agent = Agent(
     name="Job Searcher",
     instructions="""
-    You are a job searcher. Your task is to:
-    1. Use the user's RIASEC test results to generate job keywords.
-    2. Search for job vacancies using those keywords.
-    3. Display the job title, company, location, and other relevant details. IN FULL FORMAT which is
-    ['position_name'] at ['mh_company']['name']
-    Lokasi: ['mh_city']['name']
-    Tipe: ['type']
-    Sistem: ['system']
-    Level Pendidikan: ['level_education']
-    Range Gaji: ['salary_info']
-    Batas Apply: ["expired_date"]
-    Deskripsi: ['description']
-    Job Requirements: ['requirement']
-    and DO NOT SIMPLIFY the output.
+    Use job keywords from RIASEC test results to search for job vacancies. Output all details in JSON format.
+    If unable to find results, return an appropriate message and suggest alternate keywords.
     """,
     model=MODEL,
     functions=[search_job_vacancy]
 )
 
 job_searcher_alumni_agent = Agent(
-    name="Job Searcher",
+    name="Job Searcher Alumni",
     instructions="""
-    You are a job searcher. Your task is to:
-    1. Use the user's RIASEC test results to generate job keywords.
-    2. Search for job vacancies from alumni using those keywords using the function given.
-    3. Display the job title, company, location, and other relevant details. IN FULL FORMAT which is
-    ['position_name'] at ['mh_company']['name']
-    Lokasi: ['mh_city']['name']
-    Tipe: ['type']
-    Sistem: ['system']
-    Level Pendidikan: ['level_education']
-    Range Gaji: ['salary_info']
-    Batas Apply: ["expired_date"]
-    Deskripsi: ['description']
-    Job Requirements: ['requirement']
-    and DO NOT SIMPLIFY the output.
-    4. If there is no result (No jobs available for your query) use transfer to another job searcher agent using the function given.
+    Search for job vacancies from alumni databases using RIASEC keywords and user preferences. Use the provided function for Alumni Petra. 
+    If no results are found, call another job search agent for additional results.
+    Return full job details as JSON.
     """,
     model=MODEL,
     functions=[search_job_vacancy_riasec, transfer_to_another_searcher]
