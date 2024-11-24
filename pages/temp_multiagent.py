@@ -136,7 +136,17 @@ job_searcher_agent = Agent(
     You are a job searcher. Your task is to:
     1. Use the user's RIASEC test results to generate job keywords.
     2. Search for job vacancies using those keywords.
-    3. Display the job title, company, location, and other relevant details.
+    3. Display the job title, company, location, and other relevant details. IN FULL FORMAT which is
+    ['position_name'] at ['mh_company']['name']
+    Lokasi: ['mh_city']['name']
+    Tipe: ['type']
+    Sistem: ['system']
+    Level Pendidikan: ['level_education']
+    Range Gaji: ['salary_info']
+    Batas Apply: ["expired_date"]
+    Deskripsi: ['description']
+    Job Requirements: ['requirement']
+    and DO NOT SIMPLIFY the output.
     """,
     model=MODEL,
     functions=[search_job_vacancy]
@@ -148,7 +158,17 @@ job_searcher_alumni_agent = Agent(
     You are a job searcher. Your task is to:
     1. Use the user's RIASEC test results to generate job keywords.
     2. Search for job vacancies from alumni using those keywords using the function given.
-    3. Display the job title, company, location, and other relevant details.
+    3. Display the job title, company, location, and other relevant details. IN FULL FORMAT which is
+    ['position_name'] at ['mh_company']['name']
+    Lokasi: ['mh_city']['name']
+    Tipe: ['type']
+    Sistem: ['system']
+    Level Pendidikan: ['level_education']
+    Range Gaji: ['salary_info']
+    Batas Apply: ["expired_date"]
+    Deskripsi: ['description']
+    Job Requirements: ['requirement']
+    and DO NOT SIMPLIFY the output.
     4. If there is no result (No jobs available for your query) use transfer to another job searcher agent using the function given.
     """,
     model=MODEL,
