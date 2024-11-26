@@ -22,6 +22,13 @@ if "messages_job" not in st.session_state:
         {"role": "assistant", "content": "Halo! What job do you want to search for? 😊"}
     ]
 
+if "user_preferences" not in st.session_state:
+    st.session_state.user_preferences = {
+        "keywords": [],
+        "location": None,
+        "salary_range": (None, None),
+    }
+
 # RIASEC result processing
 riasec_result_data = pd.read_csv('./answers/riasec_assessment_answer.csv')
 riasec_result_key_values = {
@@ -96,15 +103,24 @@ async def search_job_vacancy_riasec(keyword: str = keywords, start_salary:int = 
 # Function to search for job vacancies
 def search_job_vacancy(keyword):
     """Search for job vacancies using a given keyword."""
+    user_prefs = st.session_state.user_preferences
+    location = user_prefs.get("location")
+    salary_range = user_prefs.get("salary_range")
+    # Include user preferences in the API request
     try:
         headers = {'apikey': os.getenv("APIJOB_API_KEY"), 'Content-Type': 'application/json'}
-        response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json={"q": keyword})
+        response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json={
+            "q": keyword,
+            "location": location,
+            "minSalary": salary_range[0],
+            "maxSalary": salary_range[1],
+        })
         response.raise_for_status()
         data = response.json()
         jobs = data.get("hits", [])
         if not jobs:
             return f"No jobs available for the keyword: {keyword}"
-
+        
         output = f"## Job Results for '{keyword}'\n"
         for idx, job in enumerate(jobs[:5], 1):
             output += f"""
@@ -117,7 +133,6 @@ def search_job_vacancy(keyword):
         return output
     except requests.RequestException as e:
         return f"Error fetching job data: {e}"
-        
 
 def transfer_to_another_searcher():
     """Transfer job searcher immediately."""
