@@ -1,0 +1,7 @@
+[32m2024-11-25 06:15:28.748[0m | [1mINFO    [0m | [36mswarms.structs.agent[0m:[36mrun[0m:[36m2328[0m - [1mRunning without cluster operations[0m
+[32m2024-11-25 06:15:28.756[0m | [31m[1mERROR   [0m | [36mswarms.structs.agent[0m:[36m_run[0m:[36m934[0m - [31m[1mAttempt 1: Error generating response: No suitable method found in the llm object.[0m
+[32m2024-11-25 06:15:28.758[0m | [31m[1mERROR   [0m | [36mswarms.structs.agent[0m:[36m_run[0m:[36m941[0m - [31m[1mFailed to generate a valid response after retry attempts.[0m
+[32m2024-11-25 06:15:28.759[0m | [1mINFO    [0m | [36mswarms.structs.agent[0m:[36m_run[0m:[36m984[0m - [1mAutosaving agent state.[0m
+[32m2024-11-25 06:15:28.761[0m | [1mINFO    [0m | [36mswarms.structs.agent[0m:[36msave_state[0m:[36m1460[0m - [1mSaving Agent Financial-Analysis-Agent[0m
+[32m2024-11-25 06:15:28.767[0m | [1mINFO    [0m | [36mswarms.structs.agent[0m:[36msave[0m:[36m1283[0m - [1mSaved agent history to: Financial-Analysis-Agent_state.json.json[0m
+[32m2024-11-25 06:15:28.769[0m | [1mINFO    [0m | [36mswarms.structs.agent[0m:[36msave_state[0m:[36m1462[0m - [1mSaved agent state[0m

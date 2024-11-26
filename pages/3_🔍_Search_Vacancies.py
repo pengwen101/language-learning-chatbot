@@ -14,6 +14,8 @@ import nest_asyncio
 import logging
 import requests
 import sys
+from duckduckgo_search import DDGS
+from datetime import datetime
 nest_asyncio.apply()
 
 riasec_result_data = pd.read_csv('./answers/riasec_assessment_answer.csv')
@@ -120,16 +122,16 @@ Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_
 # Declare Tools
 # function tools    
 
-# async def get_id_mh_province(provinces:str) -> str:
-#     """
-#     Use this tool if user specify the province, NOT the city. Returns province ID from user query. The province ID from this tool will be used for the tool 'search_job_vacancy'
-#     """
-#     r = requests.get('https://panel-alumni.petra.ac.id/api/province')
-#     data = r.json()
-#     for d in data['provinces']:
-#         if provinces.lower() == d['name'].lower():
-#             return d['id']
-#     return ""
+async def get_id_mh_province(provinces:str) -> str:
+    """
+    Use this tool if user specify the province, NOT the city. Returns province ID from user query. The province ID from this tool will be used for the tool 'search_job_vacancy'
+    """
+    r = requests.get('https://panel-alumni.petra.ac.id/api/province')
+    data = r.json()
+    for d in data['provinces']:
+        if provinces.lower() == d['name'].lower():
+            return d['id']
+    return ""
 
 async def get_keywords_from_riasec_result() -> str:
     """
@@ -200,6 +202,19 @@ async def search_job_vacancy_riasec(keyword: str = "", start_salary:int = 500000
 
     output += "\n\nShow this result to user directly with no summarization, and format it nicely."
     return output
+
+
+async def search_educational_content():
+    """Search for educational content based on user RIASEC test result using DuckDuckGo."""
+    with DDGS() as ddg:
+        results = ddg.text(f"educational content for {top_3} {datetime.now().strftime('%Y-%m')}", max_results=3)
+        if results:
+            educational_content = "\n\n".join([
+                f"Title: {result['title']}\nURL: {result['href']}\nSummary: {result['body']}" 
+                for result in results
+            ])
+            return educational_content
+        return f"No educational content found for {top_3}."
 
     
 async def search_job_vacancy(keyword: str) -> str:
@@ -285,11 +300,12 @@ async def search_job_vacancy(keyword: str) -> str:
 search_job_vacancy_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy) 
 get_keywords_from_riasec_result = FunctionTool.from_defaults(async_fn=get_keywords_from_riasec_result)
 alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
+educational_content_tool = FunctionTool.from_defaults(async_fn=search_educational_content)
 # get_job_vacancy_detail_tool = FunctionTool.from_defaults(async_fn=get_job_vacancy_slug_detail) 
-# get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
+get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
 
 
-tools = [alumni_job_tool, search_job_vacancy_tool, get_keywords_from_riasec_result]
+tools = [alumni_job_tool, search_job_vacancy_tool, get_keywords_from_riasec_result, get_province_id_tool, educational_content_tool]
 
 
 # Main Program
@@ -310,13 +326,6 @@ if "chat_engine_job" not in st.session_state.keys():
     ]
     memory = ChatMemoryBuffer.from_defaults(token_limit=32768)
 
-    async def custom_logic(message):
-        # First, attempt to use alumni_job_tool
-        response = await alumni_job_tool.execute(input=message)
-        if "No results found" in response:  # Or any other indication of no results
-            # Fall back to search_job_vacancy_tool if no results from alumni_job_tool
-            response = await search_job_vacancy_tool.execute(input=message)
-        return response
     st.session_state.chat_engine_job = ReActAgent.from_tools(
         tools,
         chat_mode="react",
@@ -324,12 +333,8 @@ if "chat_engine_job" not in st.session_state.keys():
         memory=memory,
         react_system_prompt=react_system_prompt,
         # retriever=retriever,
-        custom_response_handler=custom_logic,
         llm=Settings.llm
     )
-
-
-    print(st.session_state.chat_engine_job.get_prompts())
 
 # Display chat messages from history on app rerun
 for message in st.session_state.messages_job:
