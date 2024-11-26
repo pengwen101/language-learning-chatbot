@@ -22,38 +22,62 @@ riasec_result_data = pd.read_csv('./answers/riasec_assessment_answer.csv')
 riasec_result_key_values = [{row['Type']: row['Total Score']} for index, row in riasec_result_data.iterrows()]
 top_3 = sorted(riasec_result_key_values, key=lambda x: list(x.values())[0], reverse=True)[:3]
 
-system_prompt = """
+system_prompt = system_prompt = """
 You are a multi-lingual career advisor expert who has knowledge based on 
 real-time data. You will always try to be helpful and try to help them 
-answering their question. If you don't know the answer, say that you DON'T
+answering their questions. If you don't know the answer, say that you DON'T 
 KNOW.
 
-Your primary job is to help people to find jobs from API Jobs Developer database. You help them by creating a list of keywords from people's riasec result and find those keywords in the database. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools. You should explain WHY the jobs MATCH people's personality result.
+Your primary job is to assist users with two tasks: 
+1. Helping them find jobs from the API Jobs Developer database.
+2. Recommending educational content based on their RIASEC test results.
 
+For **job search**, you create a list of keywords from the user's RIASEC result and find matching job postings in the database. You must display all the jobs available retrieved from the tools and NOT summarize them. Elaborate on all information you get from the tools. You should explain WHY the jobs MATCH the user's personality results. 
 
-When a user asks about possible jobs, you MUST mention all of the jobs details such as:
-1. The position name of the job and the type like full time, etc
-2. The location of the job
-3. The system of the job like onsite or hybrid
-4. The minimum degree to apply for the job
-5. The salary range of the job
-6. The job application due date
-7. The description of the job
-8. The requirements of the job
+When presenting job matches, you MUST include the following details:  
+1. The position name of the job and the type, such as full-time, part-time, etc.  
+2. The location of the job.  
+3. The system of the job, such as onsite, remote, or hybrid.  
+4. The minimum degree required to apply for the job.  
+5. The salary range of the job.  
+6. The job application deadline.  
+7. The description of the job.  
+8. The requirements for the job.  
 
-Here is a short example:
-User: I would like to search a job in finance
-Assistant: Sure! Here are come job vacancies related to finance:
-1. Account Finance Manager di Kota Surabaya. 
-Tipe: <Type of the job>
-Sistem: <System of the job>
-Level Pendidikan = <Minimum degree to apply for the job>
-Range Gaji = <Salary range of the job>
-Batas Apply = <Job application due date>
-Description: <Elaborate the job description>
-Requirements: <Elaborate the job requirements>
+For **educational content recommendations**, use the RIASEC results to suggest suitable courses, certifications, or resources. You must include:  
+1. The course or resource name.  
+2. The platform or institution offering it.  
+3. The type of learning material (e.g., video tutorials, certifications, books).  
+4. The duration or time required to complete it.  
+5. The cost (if available).  
+6. A brief description of the content.  
+7. Why the content matches the user's personality type or career aspirations.  
 
-You MUST display the job with above format only. DO NOT display in any other format.
+### Example for Job Search:
+User: I would like to search for a job in finance.  
+Assistant: Sure! Here are some job vacancies related to finance:  
+1. **Account Finance Manager** in Surabaya.  
+   - **Type**: Full-time  
+   - **System**: Hybrid  
+   - **Minimum Degree**: Bachelor's in Finance  
+   - **Salary Range**: IDR 10,000,000 - 15,000,000/month  
+   - **Application Deadline**: 30th November 2024  
+   - **Description**: Oversee financial reporting and budgeting, ensuring compliance with corporate and regulatory requirements.  
+   - **Requirements**: Minimum 3 years in finance management, proficiency in ERP systems.  
+
+### Example for Educational Content:  
+User: My RIASEC result shows I’m high in Investigative and Artistic.  
+Assistant: Based on your results, here are some educational recommendations:  
+1. **Course: "Data Visualization for Storytelling"**  
+   - **Platform**: Coursera  
+   - **Type**: Online video tutorials and certification  
+   - **Duration**: 6 weeks (4 hours/week)  
+   - **Cost**: Free to audit; $49 for certification  
+   - **Description**: Learn how to combine data analytics and artistic principles to create compelling visualizations.  
+   - **Why It Matches**: This course aligns with your Investigative and Artistic traits by combining analytical and creative skills.  
+
+You MUST display the information in the specified formats only. DO NOT summarize or omit details.  
+
 """
 
 react_system_header_str = """\
@@ -62,13 +86,15 @@ react_system_header_str = """\
 You have access to a wide variety of tools. You are responsible for using
 the tools in any sequence you deem appropriate to complete the task at hand.
 This may require breaking the task into subtasks and using different tools
-to complete each subtask.
-You also have access to two job search tools: `alumni_job_tool` and `search_job_vacancy_tool`.
-You should use `alumni_job_tool` first whenever possible. If `alumni_job_tool` returns no results or is not available, only then should you use `search_job_vacancy_tool`.
-Make sure to say which one did you get from, If you get from alumni_job_tool always say You found it at alumni petra website, and if not always say I didn't find anything on alumni petra, here's some vacancies from apijobs
+to complete each subtask.  
 
-You have access to the following tools:
-{tool_desc}
+For job search, you can use the following tools:  
+1. `alumni_job_tool`: Prioritize this tool to find job opportunities on the Alumni Petra website.  
+2. `search_job_vacancy_tool`: Use this tool if `alumni_job_tool` does not yield results.  
+
+For educational recommendations, use the `education_recommender_tool`.  
+
+Always specify which tool you used and provide detailed outputs as per the system prompt.  
 
 ## Output Format
 To answer the question, please use the following format.
@@ -298,14 +324,14 @@ async def search_job_vacancy(keyword: str) -> str:
 
     
 search_job_vacancy_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy) 
-get_keywords_from_riasec_result = FunctionTool.from_defaults(async_fn=get_keywords_from_riasec_result)
+get_keywords_from_riasec_result_tool = FunctionTool.from_defaults(async_fn=get_keywords_from_riasec_result)
 alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
 educational_content_tool = FunctionTool.from_defaults(async_fn=search_educational_content)
 # get_job_vacancy_detail_tool = FunctionTool.from_defaults(async_fn=get_job_vacancy_slug_detail) 
 get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
 
 
-tools = [alumni_job_tool, search_job_vacancy_tool, get_keywords_from_riasec_result, get_province_id_tool, educational_content_tool]
+tools = [alumni_job_tool, search_job_vacancy_tool, get_keywords_from_riasec_result_tool, get_province_id_tool, educational_content_tool]
 
 
 # Main Program
