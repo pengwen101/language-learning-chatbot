@@ -71,7 +71,7 @@ search_job_vacancy_riasec_tool = FunctionTool.from_defaults(async_fn=search_job_
 
 def getBestSlugs():
     print("view csv fn called")
-    with open('slugs.csv', newline='') as csvfile:
+    with open('pages/slug.csv', newline='') as csvfile:
         spamreader = csv.reader(csvfile)
         output = ""
         for row in spamreader:
@@ -107,30 +107,13 @@ job_agent = Agent(
     functions=[searchJob],
     model=MODEL,
 )
+
+def return_slug(keyword):
+    slug_response = client.run(
+        agent=slug_agent,
+        messages=[{"role": "user", "content": f"{keyword}"}]
+    )
+    return slug_response.messages[-1]['content'].split(", ")
     
 
 print(getBestSlugs())
-
-while True:
-    prompt = input("Input: ")
-    slug_response = client.run(
-        agent=slug_agent,
-        messages=[{"role": "user", "content": f"{prompt}"}]
-    )
-    print("=============== SLUG ===============")
-    print(slug_response)
-    print(f"Job Response: {slug_response.messages[-1]['content']}")
-
-    jobs = slug_response.messages[-1]['content'].split(', ')
-    for job in jobs:
-        print(f"THIS IS A JOB {job}")
-    
-    job_response = client.run(
-        agent=job_agent,
-        messages=[{"role": "user", "content": f"{slug_response.messages[-1]['content']}"}]
-    )
-    print("=============== JOB ===============")
-    print(job_response)
-    print(f"Job Response: {job_response.messages[-1]['content']}")
-
-

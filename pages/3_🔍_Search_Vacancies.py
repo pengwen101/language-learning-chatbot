@@ -16,6 +16,8 @@ import requests
 import sys
 from duckduckgo_search import DDGS
 from datetime import datetime
+from pages.slug_picker import return_slug
+
 nest_asyncio.apply()
 
 riasec_result_data = pd.read_csv('./answers/riasec_assessment_answer.csv')
@@ -25,76 +27,50 @@ top_3 = sorted(riasec_result_key_values, key=lambda x: list(x.values())[0], reve
 system_prompt = system_prompt = """
 You are a multi-lingual career advisor expert who has knowledge based on 
 real-time data. You will always try to be helpful and try to help them 
-answering their questions. If you don't know the answer, say that you DON'T 
+answering their question. If you don't know the answer, say that you DON'T
 KNOW.
 
-Your primary job is to assist users with two tasks: 
-1. Helping them find jobs from the API Jobs Developer database.
-2. Recommending educational content based on their RIASEC test results.
+Your primary job is to help people to find jobs from Petra Alumni database. You help them by creating a list of keywords from people's riasec result and find those keywords in the database. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools. You should explain WHY the jobs MATCH people's personality result.
 
-For **job search**, you create a list of keywords from the user's RIASEC result and find matching job postings in the database. You must display all the jobs available retrieved from the tools and NOT summarize them. Elaborate on all information you get from the tools. You should explain WHY the jobs MATCH the user's personality results. 
 
-When presenting job matches, you MUST include the following details:  
-1. The position name of the job and the type, such as full-time, part-time, etc.  
-2. The location of the job.  
-3. The system of the job, such as onsite, remote, or hybrid.  
-4. The minimum degree required to apply for the job.  
-5. The salary range of the job.  
-6. The job application deadline.  
-7. The description of the job.  
-8. The requirements for the job.  
+When a user asks about possible jobs, you MUST mention all of the jobs details such as:
+1. The position name of the job and the type like full time, etc
+2. The location of the job
+3. The system of the job like onsite or hybrid
+4. The minimum degree to apply for the job
+5. The salary range of the job
+6. The job application due date
+7. The description of the job
+8. The requirements of the job
 
-For **educational content recommendations**, use the RIASEC results to suggest suitable courses, certifications, or resources. You must include:  
-1. The course or resource name.  
-2. The platform or institution offering it.  
-3. The type of learning material (e.g., video tutorials, certifications, books).  
-4. The duration or time required to complete it.  
-5. The cost (if available).  
-6. A brief description of the content.  
-7. Why the content matches the user's personality type or career aspirations.  
+Here is a short example:
+User: I would like to search a job in finance
+Assistant: Sure! Here are come job vacancies related to finance:
+1. Account Finance Manager di Kota Surabaya. 
+Tipe: <Type of the job>
+Sistem: <System of the job>
+Level Pendidikan = <Minimum degree to apply for the job>
+Range Gaji = <Salary range of the job>
+Batas Apply = <Job application due date>
+Description: <Elaborate the job description>
+Requirements: <Elaborate the job requirements>
 
-### Example for Job Search:
-User: I would like to search for a job in finance.  
-Assistant: Sure! Here are some job vacancies related to finance:  
-1. **Account Finance Manager** in Surabaya.  
-   - **Type**: Full-time  
-   - **System**: Hybrid  
-   - **Minimum Degree**: Bachelor's in Finance  
-   - **Salary Range**: IDR 10,000,000 - 15,000,000/month  
-   - **Application Deadline**: 30th November 2024  
-   - **Description**: Oversee financial reporting and budgeting, ensuring compliance with corporate and regulatory requirements.  
-   - **Requirements**: Minimum 3 years in finance management, proficiency in ERP systems.  
-
-### Example for Educational Content:  
-User: My RIASEC result shows I’m high in Investigative and Artistic.  
-Assistant: Based on your results, here are some educational recommendations:  
-1. **Course: "Data Visualization for Storytelling"**  
-   - **Platform**: Coursera  
-   - **Type**: Online video tutorials and certification  
-   - **Duration**: 6 weeks (4 hours/week)  
-   - **Cost**: Free to audit; $49 for certification  
-   - **Description**: Learn how to combine data analytics and artistic principles to create compelling visualizations.  
-   - **Why It Matches**: This course aligns with your Investigative and Artistic traits by combining analytical and creative skills.  
-
-You MUST display the information in the specified formats only. DO NOT summarize or omit details.  
-
+You MUST display the job with above format only. DO NOT display in any other format.
 """
 
-react_system_header_str = """\
+react_system_header_str =  """\
 
 ## Tools
 You have access to a wide variety of tools. You are responsible for using
 the tools in any sequence you deem appropriate to complete the task at hand.
 This may require breaking the task into subtasks and using different tools
-to complete each subtask.  
+to complete each subtask.
+You also have access to two job search tools: alumni_job_tool and search_job_vacancy_tool.
+You should use alumni_job_tool first whenever possible. If alumni_job_tool returns no results or is not available, only then should you use search_job_vacancy_tool.
+Make sure to say which one did you get from, If you get from alumni_job_tool always say You found it at alumni petra website, and if not always say I didn't find anything on alumni petra, here's some vacancies from apijobs
 
-For job search, you can use the following tools:  
-1. `alumni_job_tool`: Prioritize this tool to find job opportunities on the Alumni Petra website.  
-2. `search_job_vacancy_tool`: Use this tool if `alumni_job_tool` does not yield results.  
-
-For educational recommendations, use the `education_recommender_tool`.  
-
-Always specify which tool you used and provide detailed outputs as per the system prompt.  
+You have access to the following tools:
+{tool_desc}
 
 ## Output Format
 To answer the question, please use the following format.
@@ -175,57 +151,33 @@ async def search_job_vacancy_riasec(keyword: str = "", start_salary:int = 500000
     """
     Searches the Alumni Petra database for a list of job vacancies. If a province is specified, retrieve its ID first. Jobs are shown in a numbered list format, with an explanation if requested.
     """
-    r = requests.get('https://panel-alumni.petra.ac.id/api/vacancy', {
-        "page": 1,
-        "type": "freelance,fulltime,parttime,internship",
-        "system": "onsite,remote,hybrid",
-        "level_education": "diploma,sarjana,magister,doktor",
-        "keyword": keyword,
-        "salary_range": str(start_salary) + ", " + str(end_salary),
-        "id_mh_province": id_mh_province,
-        "id_mh_city": "",
-        "perPage": 3,
-        "orderBy": "updated_at",
-        "order": "DESC",
-        "skills": "",
-        "prody": "",
-    })
-
-    data = r.json()
-    if len(data["vacancies"]["data"]) == 0:
-        return "No jobs available for your query."
-
-    output = "SAY This is what I found on Alumni Petra:\n"
+    slugs = return_slug(keyword)
+    print("slugs are: ",slugs)
+    exit()
+    output = ""
     idx = 1
-    for d in data["vacancies"]["data"]:
-        salary_start = d['salary_start'] if d['salary_start'] is not None else ''
-        salary_end = d['salary_end'] if d['salary_end'] is not None else ''
+    for slug in slugs:
+        r = requests.get(f'https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
+        data = r.json()
+        if len(data["vacancy"]) == 0:
+            return "No jobs available for your query."
+        salary_start = data['vacancy']['salary_start'] if data['vacancy']['salary_start'] is not None else ''
+        salary_end = data['vacancy']['salary_end'] if data['vacancy']['salary_end'] is not None else ''
         salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else 'Tidak ada informasi'
-        
+            
         if show_explaination:
             output += f"""
-                {idx}. {d['position_name']} at {d['mh_company']['name']}
-                Lokasi: {d['mh_city']['name']}
-                Tipe: {d['type']}
-                Sistem: {d['system']}
-                Level Pendidikan: {d['level_education']}
+                {idx}. {data['vacancy']['position_name']} at {data['vacancy']['mh_company']['name']}
+                Lokasi: {data['vacancy']['mh_city']['name']}
+                Tipe: {data['vacancy']['type']}
+                Sistem: {data['vacancy']['system']}
+                Level Pendidikan: {data['vacancy']['level_education']}
                 Range Gaji: {salary_info}
-                Batas Apply: {d["expired_date"]}
-                Deskripsi: {BeautifulSoup(d['description'], 'html.parser').get_text()}
-                Job Requirements: {BeautifulSoup(d['requirement'], 'html.parser').get_text()}
-            """
-        else:
-            output += f"""
-                {idx}. {d['position_name']} at {d['mh_company']['name']}
-                Lokasi: {d['mh_city']['name']}
-                Tipe: {d['type']}
-                Sistem: {d['system']}
-                Level Pendidikan: {d['level_education']}
-                Range Gaji: {salary_info}
-                Batas Apply: {d["expired_date"]}
+                Batas Apply: {data['vacancy']["expired_date"]}
+                Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text()}
+                Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text()}
             """
         idx += 1
-
     output += "\n\nShow this result to user directly with no summarization, and format it nicely."
     return output
 
@@ -233,8 +185,9 @@ async def search_job_vacancy_riasec(keyword: str = "", start_salary:int = 500000
 async def search_educational_content():
     """Search for educational content based on user RIASEC test result using DuckDuckGo."""
     with DDGS() as ddg:
-        results = ddg.text(f"educational content for {top_3} {datetime.now().strftime('%Y-%m')}", max_results=3)
+        results = ddg.text(f"educational content for {top_3} {datetime.now().strftime('%Y-%m')}", max_results=1)
         if results:
+            print(results)
             educational_content = "\n\n".join([
                 f"Title: {result['title']}\nURL: {result['href']}\nSummary: {result['body']}" 
                 for result in results
@@ -331,7 +284,7 @@ educational_content_tool = FunctionTool.from_defaults(async_fn=search_educationa
 get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
 
 
-tools = [alumni_job_tool, search_job_vacancy_tool, get_keywords_from_riasec_result_tool, get_province_id_tool, educational_content_tool]
+tools = [alumni_job_tool, get_keywords_from_riasec_result_tool, get_province_id_tool, educational_content_tool]
 
 
 # Main Program
