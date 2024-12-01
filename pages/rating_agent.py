@@ -67,10 +67,11 @@ def get_relevant_jobs(keyword):
 
 
 # Comment mulai sini kalo mau diimport
-while True:
-    keyword = input("Keyword: ")
-    get_relevant_jobs(keyword)
-    print()
+
+# while True:
+#     keyword = input("Keyword: ")
+#     get_relevant_jobs(keyword)
+#     print()
 
 # print(jobs)
 # slugs = load_csv_slugs()

@@ -113,7 +113,8 @@ def return_slug(keyword):
         agent=slug_agent,
         messages=[{"role": "user", "content": f"{keyword}"}]
     )
-    return slug_response.messages[-1]['content'].split(", ")
+    print("Slug response:", slug_response)
+    return slug_response.messages[-1]['content']
     
 
 print(getBestSlugs())
