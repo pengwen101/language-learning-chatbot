@@ -23,6 +23,7 @@ nest_asyncio.apply()
 riasec_result_data = pd.read_csv('./answers/riasec_assessment_answer.csv')
 riasec_result_key_values = [{row['Type']: row['Total Score']} for index, row in riasec_result_data.iterrows()]
 top_3 = sorted(riasec_result_key_values, key=lambda x: list(x.values())[0], reverse=True)[:3]
+print(top_3)
 
 system_prompt = system_prompt = """
 You are a multi-lingual career advisor expert who has knowledge based on 
@@ -30,22 +31,36 @@ real-time data. You will always try to be helpful and try to help them
 answering their question. If you don't know the answer, say that you DON'T
 KNOW.
 
-Your primary job is to help people to find jobs from Petra Alumni database. You help them by creating a keyword from people's riasec result passing them to another tool to return a list of jobs available. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools. You should explain WHY the jobs MATCH people's personality result.
+Your responsibilities are as follows:
 
+1. Job Preference Detection:
+Detect and record users' job preferences whenever they mention keywords or phrases related to their career interests (e.g., "remote work," "full-stack development," "data analysis"). Preferences are dynamically stored and used to refine job search queries.
 
-When a user asks about possible jobs, you MUST mention all of the jobs details such as:
-1. The position name of the job and the type like full time, etc
-2. The location of the job
-3. The system of the job like onsite or hybrid
-4. The minimum degree to apply for the job
-5. The salary range of the job
-6. The job application due date
-7. The description of the job
-8. The requirements of the job
+2. Job Matching:
+Use user preferences (keywords and RIASEC results) to search the Petra Alumni database for relevant job vacancies.
+
+3. Detailed Job Information Display:
+When displaying jobs, include all details retrieved from the database without summarizing them. Each job must include:
+    Position name and type (e.g., full-time, part-time).
+    Job location.
+    Job system (e.g., onsite, hybrid, remote).
+    Minimum degree required to apply.
+    Salary range.
+    Application deadline.
+    Job description.
+    Job requirements.
+
+4. Educational Resources:
+Based on user RIASEC results, search and recommend educational content to help users enhance their skills or explore career options.
+
+5. Output Rules:
+Always use a numbered list format for job listings.
+Include all details explicitly as retrieved from the database.
+Explain how the listed jobs align with the user's RIASEC personality results.
 
 Here is a short example:
-User: I would like to search a job in finance
-Assistant: Sure! Here are come job vacancies related to finance:
+User: I would like to search a job according to my riasec result
+Assistant: Sure! Here are come job vacancies related your riasec result:
 1. Account Finance Manager di Kota Surabaya. 
 Tipe: <Type of the job>
 Sistem: <System of the job>
@@ -54,6 +69,9 @@ Range Gaji = <Salary range of the job>
 Batas Apply = <Job application due date>
 Description: <Elaborate the job description>
 Requirements: <Elaborate the job requirements>
+
+Why These Jobs Match Your RIASEC Results:
+Based on your interest in data analysis (aligning with the Investigative and Conventional aspects of RIASEC), these roles focus on analytical skills, data-driven decision-making, and systematic problem-solving, which are ideal for your personality traits.
 
 You MUST display the job with above format only. DO NOT display in any other format.
 """
@@ -118,36 +136,26 @@ Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_
 
 
 # Declare Tools
-# function tools    
 
-async def get_id_mh_province(provinces:str) -> str:
+async def record_new_preference(preference: str):
     """
-    Use this tool if user specify the province, NOT the city. Returns province ID from user query. The province ID from this tool will be used for the tool 'search_job_vacancy'
+    Detect user's job preferences everytime user mention anything that can be interpreted as a preference towards a job. The job preference should be in the form of keywords such as "remote work," "full-stack development," "data analysis," "machine learning," or "creative writing".
     """
-    r = requests.get('https://panel-alumni.petra.ac.id/api/province')
-    data = r.json()
-    for d in data['provinces']:
-        if provinces.lower() == d['name'].lower():
-            return d['id']
-    return ""
 
-async def get_keywords_from_riasec_result() -> str:
-    """
-    Provides only one keyword matching with user's personality. Do not output more than one keyword. The keyword MUST BE for job search. Use this as the parameter 'keyword' used in other tool. 
-    """
-    riasec_docs = SimpleDirectoryReader(input_dir='./docs/').load_data()
-    index = VectorStoreIndex.from_documents(riasec_docs)
-    query_engine = index.as_query_engine()
-    query = f"Return only ONE KEYWORD that is suited for JOB SEARCH that match with {top_3[0]}, {top_3[1]}, {top_3[2]} personality"
-    response = query_engine.query(query)
+    riasec_result_data['preference'] = riasec_result_data['preference'].append(preference)
+    print(riasec_result_data['preference'])
     
-    return response
 
-async def search_job_vacancy_riasec(keyword: str) -> str:
+
+async def search_job_vacancy_riasec() -> str:
     """
     Searches the Alumni Petra database for a list of job vacancies. Jobs are shown in a numbered list format.
     """
 
+    keyword = list(top_3[0].keys())[0] + ", " + list(top_3[1].keys())[0] + ", " + list(top_3[2].keys())[0]
+    print("Keyword:", keyword)
+    if('preference' in riasec_result_data.columns):
+        keyword += ", " + ", ".join(riasec_result_data['preference'])
     relevant_jobs = get_relevant_jobs(keyword)
     relevant_slugs = relevant_jobs['Link'][:5].map(lambda x: x[35:]).to_numpy()
     print(relevant_slugs)
@@ -193,95 +201,12 @@ async def search_educational_content():
         return f"No educational content found for {top_3}."
 
     
-async def search_job_vacancy(keyword: str) -> str:
-    """
-        Searches the API Jobs Developer database for A LIST OF (ONE OR MORE THAN ONE) matching job vacancy entries. Each job should be shown in a numbered list format. Keyword should be configured to one relevant word that MUST represents the job name or position in ENGLISH. 
-    """
-    
-    headers = {
-        'apikey': 'c1f4d885281ebe8b65295a84df1f07b253ae56ad68a5d48a5fc93604ce269e02',  
-        'Content-Type': 'application/json',
-    }
-
-    data = {
-        "q": keyword,
-        # "country": "indonesia",
-    }
-
-#     try:
-#     # Make a POST request to the Flask API
-#     response = requests.post(url, json=params)
-    
-#     # Check if the request was successful
-#     if response.status_code == 200:
-#         # Parse the JSON response
-#         data = response.json()
-#         print("Data from API:", json.dumps(data, indent=4))
-#     else:
-#         print(f"Failed to fetch data: {response.status_code}")
-#         print(response.json())  # Display error details if any
-# except requests.exceptions.RequestException as e:
-#     print(f"An error occurred: {e}")
-    url = "http://127.0.0.1:5000/api/fetch"
-    try:
-        response = requests.post(url, json=data)
-        if response.status_code == 200:
-            data = response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"An error occurred: {e}")
-        response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json=data)
-        data = response.json()
-    # response = requests.post('https://api.apijobs.dev/v1/job/search', headers=headers, json=data)
-    # data = response.json()
-
-    output = f"# Job results for '{keyword}'\n"
-    jobs = data.get("hits", [])
-    
-    if not jobs:
-        return "No jobs available for your query."
-
-    # Formatting each job listing
-    for idx, job in enumerate(jobs[:5], 1):  # Limiting to 5 results
-        output += f"""
-        {idx}. {job['title']} at {job.get('hiringOrganizationName', 'N/A')}
-        Language: {job.get('language', 'N/A')}
-        Description: {job.get('description', 'N/A')}
-        Website URL: {job.get('url', 'N/A')}
-        """
-
-    output += "\n\n Show this result to user DIRECTLY, with NO summarization. Make sure to ALWAYS SHOW the WEBSITE URL. If it returns nothing, say to user that NO JOBS are available for user query."
-    
-    return output
-   
-
-    
-
-# async def get_job_vacancy_slug_detail(slug: str) -> str:
-#     """
-#         Provides detailed information regarding the vacancy. slug must be a specific vacancy slug.
-#     """
-    
-#     r = requests.get(f"https://panel-alumni.petra.ac.id/api/vacancy/{slug}")
-#     data = r.json()["vacancy"]
-#     salary_start = data['salary_start'] if data['salary_start'] is not None else ''
-#     salary_end = data['salary_end'] if data['salary_end'] is not None else ''
-#     if(not salary_start and not salary_end):
-#         salary_info = 'Tidak ada informasi'
-#     else:
-#         salary_info = str(salary_start) + " - " + str(salary_end)
-    
-#     return f"Pekerjaan ini adalah sebagai {data['position_name']} di {data['mh_company']['name']} di kota {data['mh_city']['name']} dengan sistem {data['system']} dan tipe {data['type']} dengan range gaji {salary_info}. Untuk apply, anda harus memiliki level pendidikan {data['level_education']}. Di dalam pekerjaan ini user akan mengerjakan beberapa job description, yaitu: {BeautifulSoup(data['description'], 'html.parser').get_text()}. Untuk mendaftar ke pekerjaan ini, user harus memiliki requirements sebagai berikut: {BeautifulSoup(data['requirement'], 'html.parser').get_text()}. Batas apply ke pekerjaan ini adalah {data['expired_date']}"
-
-    
-search_job_vacancy_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy) 
-get_keywords_from_riasec_result_tool = FunctionTool.from_defaults(async_fn=get_keywords_from_riasec_result)
 alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
 educational_content_tool = FunctionTool.from_defaults(async_fn=search_educational_content)
-# get_job_vacancy_detail_tool = FunctionTool.from_defaults(async_fn=get_job_vacancy_slug_detail) 
-# get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
+record_preference_tool = FunctionTool.from_defaults(async_fn=record_new_preference)
 
 
-tools = [alumni_job_tool, get_keywords_from_riasec_result_tool, educational_content_tool]
+tools = [record_preference_tool, alumni_job_tool, educational_content_tool]
 
 
 # Main Program

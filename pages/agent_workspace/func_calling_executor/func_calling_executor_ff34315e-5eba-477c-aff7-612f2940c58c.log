@@ -1,2 +1,0 @@
-[32m2024-11-25 06:14:13.896[0m | [1mINFO    [0m | [36mswarms.telemetry.check_update[0m:[36mcheck_for_update[0m:[36m67[0m - [1mNo update available: 6.3.0 <= 6.3.0[0m
-[32m2024-11-25 06:14:13.898[0m | [1mINFO    [0m | [36mswarms.telemetry.auto_upgrade_swarms[0m:[36mauto_update[0m:[36m38[0m - [1mswarms is up to date![0m
