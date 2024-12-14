@@ -16,7 +16,7 @@ import requests
 import sys
 from duckduckgo_search import DDGS
 from datetime import datetime
-from pages.rating_agent import get_relevant_jobs
+from pages.slug_picker import return_slug
 
 nest_asyncio.apply()
 
@@ -30,7 +30,7 @@ real-time data. You will always try to be helpful and try to help them
 answering their question. If you don't know the answer, say that you DON'T
 KNOW.
 
-Your primary job is to help people to find jobs from Petra Alumni database. You help them by creating a keyword from people's riasec result passing them to another tool to return a list of jobs available. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools. You should explain WHY the jobs MATCH people's personality result.
+Your primary job is to help people to find jobs from Petra Alumni database. You help them by creating a list of keywords from people's riasec result and find those keywords in the database. You should display all the jobs available retrieved from the tools and NOT summarize them. Elaborate all informations you get from the tools. You should explain WHY the jobs MATCH people's personality result.
 
 
 When a user asks about possible jobs, you MUST mention all of the jobs details such as:
@@ -60,13 +60,14 @@ You MUST display the job with above format only. DO NOT display in any other for
 
 react_system_header_str =  """\
 
-You are designed to help with a variety of tasks, from answering questions to providing summaries to other types of analyses.
-
 ## Tools
 You have access to a wide variety of tools. You are responsible for using
 the tools in any sequence you deem appropriate to complete the task at hand.
 This may require breaking the task into subtasks and using different tools
 to complete each subtask.
+You also have access to two job search tools: alumni_job_tool and search_job_vacancy_tool.
+You should use alumni_job_tool first whenever possible. If alumni_job_tool returns no results or is not available, only then should you use search_job_vacancy_tool.
+Make sure to say which one did you get from, If you get from alumni_job_tool always say You found it at alumni petra website, and if not always say I didn't find anything on alumni petra, here's some vacancies from apijobs
 
 You have access to the following tools:
 {tool_desc}
@@ -104,6 +105,9 @@ Thought: I cannot answer the question with the provided tools.
 Answer: Sorry, I cannot answer your query.
 ```
 
+## Additional Rules
+- You MUST obey the function signature of each tool. Do NOT pass in no arguments if the function expects arguments.
+
 ## Current Conversation
 Below is the current conversation consisting of interleaving human and assistant messages.
 
@@ -133,7 +137,7 @@ async def get_id_mh_province(provinces:str) -> str:
 
 async def get_keywords_from_riasec_result() -> str:
     """
-    Provides only one keyword matching with user's personality. Do not output more than one keyword. The keyword MUST BE for job search. Use this as the parameter 'keyword' used in other tool. 
+    Provides ONE keyword matching with user's personality. The keyword MUST BE for job search. Use this as the parameter 'keyword' used in other tool. 
     """
     riasec_docs = SimpleDirectoryReader(input_dir='./docs/').load_data()
     index = VectorStoreIndex.from_documents(riasec_docs)
@@ -143,39 +147,38 @@ async def get_keywords_from_riasec_result() -> str:
     
     return response
 
-async def search_job_vacancy_riasec(keyword: str) -> str:
+async def search_job_vacancy_riasec(keyword: str = "", start_salary:int = 500000, end_salary:int = 100000000, show_explaination:bool = True, id_mh_province:int = "") -> str:
     """
-    Searches the Alumni Petra database for a list of job vacancies. Jobs are shown in a numbered list format.
+    Searches the Alumni Petra database for a list of job vacancies. If a province is specified, retrieve its ID first. Jobs are shown in a numbered list format, with an explanation if requested.
     """
-
-    relevant_jobs = get_relevant_jobs(keyword)
-    relevant_slugs = relevant_jobs['Link'][:5].map(lambda x: x[35:]).to_numpy()
-    print(relevant_slugs)
-    idx = 1
+    slugs = return_slug(keyword)
+    print("slugs are: ",slugs)
+    return
     output = ""
-    for slug in relevant_slugs:
+    idx = 1
+    for slug in slugs:
         r = requests.get(f'https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
-        print(r)
-        if r.status_code != 200:
-            continue
         data = r.json()
-        print(data["vacancy"]["position_name"])
+        if len(data["vacancy"]) == 0:
+            return "No jobs available for your query."
         salary_start = data['vacancy']['salary_start'] if data['vacancy']['salary_start'] is not None else ''
         salary_end = data['vacancy']['salary_end'] if data['vacancy']['salary_end'] is not None else ''
         salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else 'Tidak ada informasi'
-        output += f"""
-            {idx}. {data['vacancy']['position_name']} at {data['vacancy']['mh_company']['name']}
-            Lokasi: {data['vacancy']['mh_city']['name']}
-            Tipe: {data['vacancy']['type']}
-            Sistem: {data['vacancy']['system']}
-            Level Pendidikan: {data['vacancy']['level_education']}
-            Range Gaji: {salary_info}
-            Batas Apply: {data['vacancy']["expired_date"]}
-            Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text()}
-            Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text()}
-        """
+            
+        if show_explaination:
+            output += f"""
+                {idx}. {data['vacancy']['position_name']} at {data['vacancy']['mh_company']['name']}
+                Lokasi: {data['vacancy']['mh_city']['name']}
+                Tipe: {data['vacancy']['type']}
+                Sistem: {data['vacancy']['system']}
+                Level Pendidikan: {data['vacancy']['level_education']}
+                Range Gaji: {salary_info}
+                Batas Apply: {data['vacancy']["expired_date"]}
+                Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text()}
+                Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text()}
+            """
         idx += 1
-    output += "\n\nShow this result to user directly with no summarization, and format it nicely. DON'T call other tools again."
+    output += "\n\nShow this result to user directly with no summarization, and format it nicely."
     return output
 
 
@@ -205,23 +208,7 @@ async def search_job_vacancy(keyword: str) -> str:
 
     data = {
         "q": keyword,
-        # "country": "indonesia",
     }
-
-#     try:
-#     # Make a POST request to the Flask API
-#     response = requests.post(url, json=params)
-    
-#     # Check if the request was successful
-#     if response.status_code == 200:
-#         # Parse the JSON response
-#         data = response.json()
-#         print("Data from API:", json.dumps(data, indent=4))
-#     else:
-#         print(f"Failed to fetch data: {response.status_code}")
-#         print(response.json())  # Display error details if any
-# except requests.exceptions.RequestException as e:
-#     print(f"An error occurred: {e}")
     url = "http://127.0.0.1:5000/api/fetch"
     try:
         response = requests.post(url, json=data)
@@ -278,10 +265,10 @@ get_keywords_from_riasec_result_tool = FunctionTool.from_defaults(async_fn=get_k
 alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
 educational_content_tool = FunctionTool.from_defaults(async_fn=search_educational_content)
 # get_job_vacancy_detail_tool = FunctionTool.from_defaults(async_fn=get_job_vacancy_slug_detail) 
-# get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
+get_province_id_tool = FunctionTool.from_defaults(async_fn=get_id_mh_province) 
 
 
-tools = [alumni_job_tool, get_keywords_from_riasec_result_tool, educational_content_tool]
+tools = [alumni_job_tool, get_keywords_from_riasec_result_tool, get_province_id_tool, educational_content_tool]
 
 
 # Main Program
@@ -293,6 +280,11 @@ if "messages_job" not in st.session_state:
         {"role": "assistant",
          "content": "Halo! What job do you want to search for? 😊"}
     ]
+
+
+def custom_handle_reasoning_failure(callback_manager, exception):
+    return "Partial response due to reasoning failure."
+
 
 # Initialize the chat engine
 if "chat_engine_job" not in st.session_state.keys():
@@ -309,7 +301,9 @@ if "chat_engine_job" not in st.session_state.keys():
         memory=memory,
         react_system_prompt=react_system_prompt,
         # retriever=retriever,
-        llm=Settings.llm
+        llm=Settings.llm,
+        max_iterations=20,
+        handle_reasoning_failure_fn=custom_handle_reasoning_failure
     )
 
 # Display chat messages from history on app rerun

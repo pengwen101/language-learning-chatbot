@@ -85,6 +85,8 @@ You have access to a wide variety of tools. You are responsible for using
 the tools in any sequence you deem appropriate to complete the task at hand.
 This may require breaking the task into subtasks and using different tools
 to complete each subtask.
+Prioritize using the record preference tool every time for storing the user preference everytime user inputs, then use the other tool.
+ONLY use search vacan if the user interested in exploring other options, if the user only wants to talk, noo need to use this tool.
 
 You have access to the following tools:
 {tool_desc}
@@ -139,26 +141,35 @@ Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_
 
 async def record_new_preference(preference: str):
     """
-    Detect user's job preferences everytime user mention anything that can be interpreted as a preference towards a job. The job preference should be in the form of keywords such as "remote work," "full-stack development," "data analysis," "machine learning," or "creative writing".
+    Detect user's job preferences everytime user mention anything that can be interpreted as a preference towards a job. The job preference should be in the form of keywords such as "remote work," "full-stack development," "data analysis," "machine learning," or "creative writing". If the preference was "career assessment" or anything that asked the previously tested riasec assessment, skip this tool.
     """
 
-    riasec_result_data['preference'] = riasec_result_data['preference'].append(preference)
-    print(riasec_result_data['preference'])
-    
+    if "riasec" not in preference.lower():
+        if 'preference' not in riasec_result_data.columns:
+            riasec_result_data['preference'] = ""
+        preferences = riasec_result_data['preference'].iloc[0].split(", ") if not riasec_result_data['preference'].empty else []
+        if preference not in preferences:
+            preferences.append(preference)
+        riasec_result_data['preference'] = ", ".join(set(preferences))
+        print(riasec_result_data['preference'])
+    return "User preference is stored"
 
 
 async def search_job_vacancy_riasec() -> str:
     """
     Searches the Alumni Petra database for a list of job vacancies. Jobs are shown in a numbered list format.
+    If the user seems to be interested in certain jobs or want to explore other options related to their RIASEC test result and preferences, use this tool as well.
     """
 
     keyword = list(top_3[0].keys())[0] + ", " + list(top_3[1].keys())[0] + ", " + list(top_3[2].keys())[0]
     print("Keyword:", keyword)
-    if('preference' in riasec_result_data.columns):
-        keyword += ", " + ", ".join(riasec_result_data['preference'])
+    if 'preference' in riasec_result_data.columns and not riasec_result_data['preference'].empty:
+        preferences = set(riasec_result_data['preference'].iloc[0].split(", "))
+        keyword += ", " + ", ".join(preferences)
+    print("Keywords:", keyword)
+
     relevant_jobs = get_relevant_jobs(keyword)
     relevant_slugs = relevant_jobs['Link'][:5].map(lambda x: x[35:]).to_numpy()
-    print(relevant_slugs)
     idx = 1
     output = ""
     for slug in relevant_slugs:
@@ -200,13 +211,39 @@ async def search_educational_content():
             return educational_content
         return f"No educational content found for {top_3}."
 
-    
+async def get_job_details(job_slug: str):
+    """Fetch detailed information about a specific job based on its slug."""
+    try:
+        r = requests.get(f'https://panel-alumni.petra.ac.id/api/vacancy/{job_slug}')
+        if r.status_code == 200:
+            data = r.json()
+            salary_start = data['vacancy']['salary_start'] or ''
+            salary_end = data['vacancy']['salary_end'] or ''
+            salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else 'Tidak ada informasi'
+
+            return f"""
+            {data['vacancy']['position_name']} at {data['vacancy']['mh_company']['name']}
+            Lokasi: {data['vacancy']['mh_city']['name']}
+            Tipe: {data['vacancy']['type']}
+            Sistem: {data['vacancy']['system']}
+            Level Pendidikan: {data['vacancy']['level_education']}
+            Range Gaji: {salary_info}
+            Batas Apply: {data['vacancy']['expired_date']}
+            Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text()}
+            Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text()}
+            """
+        else:
+            return f"Failed to fetch details for job ID: {job_slug}"
+    except Exception as e:
+        return f"Error fetching job details: {str(e)}"
+        
 alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
 educational_content_tool = FunctionTool.from_defaults(async_fn=search_educational_content)
 record_preference_tool = FunctionTool.from_defaults(async_fn=record_new_preference)
+job_detail_tool = FunctionTool.from_defaults(async_fn=get_job_details)
 
 
-tools = [record_preference_tool, alumni_job_tool, educational_content_tool]
+tools = [record_preference_tool, alumni_job_tool, job_detail_tool, educational_content_tool]
 
 
 # Main Program
@@ -216,7 +253,7 @@ st.title("Search for Jobs On Alumni Website! 🔍")
 if "messages_job" not in st.session_state:
     st.session_state.messages_job = [
         {"role": "assistant",
-         "content": "Halo! What job do you want to search for? 😊"}
+         "content": "Halo! What job do you want to search for? 😊\n\nWe will prioritize jobs based on your riasec test result"}
     ]
 
 # Initialize the chat engine
