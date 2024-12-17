@@ -154,7 +154,7 @@ async def record_new_preference(preference: str):
     return "User preference is stored"
 
 
-async def search_job_vacancy_riasec() -> str:
+async def search_job_vacancy() -> str:
     """
     Searches the Alumni Petra database for a list of job vacancies. Jobs are shown in a numbered list format. For each job you must explain why that job matches user's RIASEC result.
     If the user seems to be interested in certain jobs or want to explore other options related to their RIASEC test result and preferences, use this tool as well.
@@ -288,7 +288,7 @@ async def get_job_details(job_slug: str):
     except Exception as e:
         return f"Error fetching job details: {str(e)}"
         
-alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
+alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy)
 educational_content_tool = FunctionTool.from_defaults(async_fn=search_educational_content)
 record_preference_tool = FunctionTool.from_defaults(async_fn=record_new_preference)
 job_detail_tool = FunctionTool.from_defaults(async_fn=get_job_details)
