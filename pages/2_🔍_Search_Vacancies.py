@@ -69,9 +69,8 @@ Range Gaji = <Salary range of the job>
 Batas Apply = <Job application due date>
 Description: <Elaborate the job description>
 Requirements: <Elaborate the job requirements>
-
-Why These Jobs Match Your RIASEC Results:
-Based on your interest in data analysis (aligning with the Investigative and Conventional aspects of RIASEC), these roles focus on analytical skills, data-driven decision-making, and systematic problem-solving, which are ideal for your personality traits.
+<A reason why this job match user's RIASEC result>
+Link: <Link to job vacancy>
 
 You MUST display the job with above format only. DO NOT display in any other format.
 """
@@ -157,67 +156,109 @@ async def record_new_preference(preference: str):
 
 async def search_job_vacancy_riasec() -> str:
     """
-    Searches the Alumni Petra database for a list of job vacancies. Jobs are shown in a numbered list format.
+    Searches the Alumni Petra database for a list of job vacancies. Jobs are shown in a numbered list format. For each job you must explain why that job matches user's RIASEC result.
     If the user seems to be interested in certain jobs or want to explore other options related to their RIASEC test result and preferences, use this tool as well.
     """
 
-    keyword = list(top_3[0].keys())[0] + ", " + list(top_3[1].keys())[0] + ", " + list(top_3[2].keys())[0]
-    print("Keyword:", keyword)
-    if 'preference' in riasec_result_data.columns and not riasec_result_data['preference'].empty:
-        preferences = set(riasec_result_data['preference'].iloc[0].split(", "))
-        keyword += ", " + ", ".join(preferences)
-    print("Keywords:", keyword)
+    try:
 
-    relevant_jobs = get_relevant_jobs(keyword)
-    relevant_slugs = relevant_jobs['Link'].map(lambda x: x[35:]).to_numpy()
-    idx = 1
-    output = ""
-    for slug in relevant_slugs:
-        if idx > 5:
-            break
-        r = requests.get(f'https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
-        print(r, f'for link: https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
-        if r.status_code != 200:
-            continue
-        data = r.json()
-        print(data["vacancy"]["salary_start"])
-        salary_start = data['vacancy']['salary_start'] if data['vacancy']['salary_start'] is not None else ''
-        print("salary start:", salary_start)
-        print(data["vacancy"]["salary_end"])
-        salary_end = data['vacancy']['salary_end'] if data['vacancy']['salary_end'] is not None else ''
-        print("salary end:", salary_end)
-        salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else 'Tidak ada informasi'
-        print("salary info:", salary_info)
-        output += f"""
-            {idx}. {data['vacancy']['position_name']} at {data['vacancy']['mh_company']['name']}
-            Lokasi: {data['vacancy']['mh_city']['name']}
-            Tipe: {data['vacancy']['type']}
-            Sistem: {data['vacancy']['system']}
-            Level Pendidikan: {data['vacancy']['level_education']}
-            Range Gaji: {salary_info}
-            Batas Apply: {data['vacancy']["expired_date"]}
-            Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text() if data['vacancy']['description'] is not None else ''}
-            Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text() if data['vacancy']['requirement'] is not None else ''}
-            Link: https://alumni.petra.ac.id/vacancy/{slug} [ALWAYS SHOW THIS TO USER]
-        """
-        idx += 1
-    output += "\n\nShow it directly to user with location, type, system, educational level, salary range, application deadline, description, and job requirements information. DON'T call other tools again."
-    return output
+        keyword = list(top_3[0].keys())[0] + ", " + list(top_3[1].keys())[0] + ", " + list(top_3[2].keys())[0]
+        print("Keyword:", keyword)
+        if 'preference' in riasec_result_data.columns and not riasec_result_data['preference'].empty:
+            preferences = set(riasec_result_data['preference'].iloc[0].split(", "))
+            keyword += ", " + ", ".join(preferences)
+        print("Keywords:", keyword)
+    
+        relevant_jobs = get_relevant_jobs(keyword)
+        relevant_slugs = relevant_jobs['Link'].map(lambda x: x[35:]).to_numpy()
+        idx = 1
+        output = ""
+        for slug in relevant_slugs:
+            if idx > 5:
+                break
+            r = requests.get(f'https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
+            print(r, f'for link: https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            print(data["vacancy"]["salary_start"])
+            salary_start = data['vacancy']['salary_start'] if data['vacancy']['salary_start'] is not None else ''
+            print("salary start:", salary_start)
+            print(data["vacancy"]["salary_end"])
+            salary_end = data['vacancy']['salary_end'] if data['vacancy']['salary_end'] is not None else ''
+            print("salary end:", salary_end)
+            salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else 'Tidak ada informasi'
+            print("salary info:", salary_info)
+            output += f"""
+                {idx}. {data['vacancy']['position_name']} at {data['vacancy']['mh_company']['name']}
+                Lokasi: {data['vacancy']['mh_city']['name']}
+                Tipe: {data['vacancy']['type']}
+                Sistem: {data['vacancy']['system']}
+                Level Pendidikan: {data['vacancy']['level_education']}
+                Range Gaji: {salary_info}
+                Batas Apply: {data['vacancy']["expired_date"]}
+                Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text() if data['vacancy']['description'] is not None else ''}
+                Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text() if data['vacancy']['requirement'] is not None else ''}
+                <A reason why this job match user's RIASEC result (Why {data['vacancy']['position_name']} match {keyword})>
+                Link: https://alumni.petra.ac.id/vacancy/{slug} [ALWAYS SHOW THIS TO USER]
+            """
+            idx += 1
+        output += "\n\nShow it directly to user with location, type, system, educational level, salary range, application deadline, description, job requirements, and reason why that job match user RIASEC result. DON'T call other tools again."
+        return output
+    except Exception as e:
+        return f"Error fetching jobs: {str(e)}"
 
+async def provide_topic_for_educational_content():
+    """
+    You are a topic generation expert. Your task is to:
+    1. Take a user's RIASEC test result as input.
+    2. Identify the most relevant occupations suited for the given RIASEC profile.
+    3. Generate a topic for educational content that would help the user prepare for those occupations.
+    Output the topic in a single sentence, focusing on specific skills, knowledge, or training areas.
 
-async def search_educational_content(job: str):
-    """Search for educational content based on user job recommendation using DuckDuckGo. If you don't know user's job recommendation, call other tool to search for jobs first."""
+    """
 
-    with DDGS() as ddg:
-        results = ddg.text(f"educational content for {job} {datetime.now().strftime('%Y-%m')}", max_results=1)
-        if results:
-            print(results)
-            educational_content = "\n\n".join([
-                f"Title: {result['title']}\nURL: {result['href']}\nSummary: {result['body']}" 
-                for result in results
-            ])
-            return educational_content
-        return f"No educational content found for {top_3}."
+    this_system_prompt = """
+    You are a topic generation expert. Your task is to:
+    1. Take a user's RIASEC test result as input.
+    2. Identify the most relevant occupations suited for the given RIASEC profile.
+    3. Generate a topic for educational content that would help the user prepare for those occupations.
+    Output the topic in a single sentence, focusing on specific skills, knowledge, or training areas.
+
+    """
+
+    holland_docs = SimpleDirectoryReader("docs").load_data()
+    index = VectorStoreIndex.from_documents(holland_docs)
+    query_engine = index.as_query_engine(
+        chat_mode="context",
+        memory=memory,
+        system_prompt = this_system_prompt,
+        verbose=True
+    )
+
+    response = query_engine.query(f"Generate a topic for {top_3}")
+
+    return response
+    
+    
+
+async def search_educational_content(topic: str):
+    """Search for educational content based on user job recommendation using DuckDuckGo. Call other tool to provide a topic."""
+
+    try:
+        with DDGS() as ddg:
+            results = ddg.text(f"educational content for {topic} {datetime.now().strftime('%Y-%m')}", max_results=1)
+            if results:
+                print(results)
+                educational_content = "\n\n".join([
+                    f"Title: {result['title']}\nURL: {result['href']}\nSummary: {result['body']}" 
+                    for result in results
+                ])
+                educational_content += "Show to user the summary. ALWAYS show user the URL. DON'T call other tools again."
+                return educational_content
+            return f"No educational content found for {top_3}."
+    except Exception as e:
+        return f"Error fetching educational content. {str(e)}"
 
 async def get_job_details(job_slug: str):
     """Fetch detailed information about a specific job based on its slug."""
@@ -239,6 +280,8 @@ async def get_job_details(job_slug: str):
             Batas Apply: {data['vacancy']['expired_date']}
             Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text()}
             Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text()}
+            <Provide a reason why this job match user's RIASEC result and preference ({keyword})
+            Link: https://alumni.petra.ac.id/vacancy/{job_slug} [ALWAYS SHOW THIS TO USER]
             """
         else:
             return f"Failed to fetch details for job ID: {job_slug}"
@@ -249,9 +292,9 @@ alumni_job_tool = FunctionTool.from_defaults(async_fn=search_job_vacancy_riasec)
 educational_content_tool = FunctionTool.from_defaults(async_fn=search_educational_content)
 record_preference_tool = FunctionTool.from_defaults(async_fn=record_new_preference)
 job_detail_tool = FunctionTool.from_defaults(async_fn=get_job_details)
+provide_topic_tool = FunctionTool.from_defaults(async_fn=provide_topic_for_educational_content)
 
-
-tools = [record_preference_tool, alumni_job_tool, job_detail_tool, educational_content_tool]
+tools = [record_preference_tool, alumni_job_tool, job_detail_tool, provide_topic_tool, educational_content_tool]
 
 
 # Main Program
@@ -297,8 +340,11 @@ if prompt := st.chat_input("What is up?"):
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            response_stream = st.session_state.chat_engine_job.stream_chat(prompt)
-            st.write_stream(response_stream.response_gen)
+            try:
+                response_stream = st.session_state.chat_engine_job.stream_chat(prompt)
+                st.write_stream(response_stream.response_gen)
+            except Exception as e:
+                st.write_stream("Unable to process your request. Please try again.")
 
     # Add user message to chat history
     st.session_state.messages_job.append({"role": "assistant", "content": response_stream.response})
