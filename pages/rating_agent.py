@@ -5,6 +5,7 @@ import pandas as pd
 import csv
 import time
 import pandas as pd
+import requests
 
 load_dotenv()
 MODEL = "llama3.2:latest"
@@ -56,10 +57,15 @@ def get_relevant_jobs(keyword):
     jobs = load_xlsx_jobs()
     
     for index, row in jobs.iterrows():
-        job_position = jobs.loc[index, "Position"]
+        job_position = str(jobs.loc[index, "Position"])
         rating = get_compability_rating(keyword, job_position)
+        slug = jobs.loc[index, "Link"][35:]
+        api_link = f'https://panel-alumni.petra.ac.id/api/vacancy/{slug}'
+        r = requests.get(api_link)
+        if (r.status_code != 200):
+            rating = 0
         print(rating)
-        jobs.loc[index, "rating"] = rating
+        jobs.loc[index, "rating"] = int(rating)
     
     jobs_sorted = jobs.sort_values(by="rating", ascending=False)
     print(jobs_sorted.head())

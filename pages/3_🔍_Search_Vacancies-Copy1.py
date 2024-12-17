@@ -141,7 +141,7 @@ Settings.embed_model = OllamaEmbedding(base_url="http://127.0.0.1:11434", model_
 
 async def record_new_preference(preference: str):
     """
-    Detect user's job preferences everytime user mention anything that can be interpreted as a preference towards a job. The job preference should be in the form of keywords such as "remote work," "full-stack development," "data analysis," "machine learning," or "creative writing". If the preference was "career assessment" or anything that asked the previously tested riasec assessment, skip this tool.
+    Detect user's job preferences everytime user mention anything that can be interpreted as a preference towards a job. The job preference should be in the form of keywords such as "marketing", "remote work," "full-stack development," "data analysis", "machine learning", "creative writing", and others. If the preference was "career assessment" or anything that asked the previously tested riasec assessment, skip this tool.
     """
 
     if "riasec" not in preference.lower():
@@ -169,19 +169,25 @@ async def search_job_vacancy_riasec() -> str:
     print("Keywords:", keyword)
 
     relevant_jobs = get_relevant_jobs(keyword)
-    relevant_slugs = relevant_jobs['Link'][:5].map(lambda x: x[35:]).to_numpy()
+    relevant_slugs = relevant_jobs['Link'].map(lambda x: x[35:]).to_numpy()
     idx = 1
     output = ""
     for slug in relevant_slugs:
+        if idx > 5:
+            break
         r = requests.get(f'https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
-        print(r)
+        print(r, f'for link: https://panel-alumni.petra.ac.id/api/vacancy/{slug}')
         if r.status_code != 200:
             continue
         data = r.json()
-        print(data["vacancy"]["position_name"])
+        print(data["vacancy"]["salary_start"])
         salary_start = data['vacancy']['salary_start'] if data['vacancy']['salary_start'] is not None else ''
+        print("salary start:", salary_start)
+        print(data["vacancy"]["salary_end"])
         salary_end = data['vacancy']['salary_end'] if data['vacancy']['salary_end'] is not None else ''
+        print("salary end:", salary_end)
         salary_info = f"{salary_start} - {salary_end}" if salary_start or salary_end else 'Tidak ada informasi'
+        print("salary info:", salary_info)
         output += f"""
             {idx}. {data['vacancy']['position_name']} at {data['vacancy']['mh_company']['name']}
             Lokasi: {data['vacancy']['mh_city']['name']}
@@ -190,18 +196,20 @@ async def search_job_vacancy_riasec() -> str:
             Level Pendidikan: {data['vacancy']['level_education']}
             Range Gaji: {salary_info}
             Batas Apply: {data['vacancy']["expired_date"]}
-            Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text()}
-            Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text()}
+            Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text() if data['vacancy']['description'] is not None else ''}
+            Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text() if data['vacancy']['requirement'] is not None else ''}
+            Link: https://alumni.petra.ac.id/vacancy/{slug} [ALWAYS SHOW THIS TO USER]
         """
         idx += 1
-    output += "\n\nShow this result to user directly with no summarization, and format it nicely. DON'T call other tools again."
+    output += "\n\nShow it directly to user with location, type, system, educational level, salary range, application deadline, description, and job requirements information. DON'T call other tools again."
     return output
 
 
-async def search_educational_content():
-    """Search for educational content based on user RIASEC test result using DuckDuckGo."""
+async def search_educational_content(job: str):
+    """Search for educational content based on user job recommendation using DuckDuckGo. If you don't know user's job recommendation, call other tool to search for jobs first."""
+
     with DDGS() as ddg:
-        results = ddg.text(f"educational content for {top_3} {datetime.now().strftime('%Y-%m')}", max_results=1)
+        results = ddg.text(f"educational content for {job} {datetime.now().strftime('%Y-%m')}", max_results=1)
         if results:
             print(results)
             educational_content = "\n\n".join([
