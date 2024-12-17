@@ -16,7 +16,7 @@ import requests
 import sys
 from duckduckgo_search import DDGS
 from datetime import datetime
-from pages.rating_agent import get_relevant_jobs
+from agents.rating_agent import get_relevant_jobs
 
 nest_asyncio.apply()
 
@@ -254,7 +254,7 @@ async def search_educational_content(topic: str):
                     f"Title: {result['title']}\nURL: {result['href']}\nSummary: {result['body']}" 
                     for result in results
                 ])
-                educational_content += "Show to user the summary. ALWAYS show user the URL. DON'T call other tools again."
+                educational_content += f"Show to user the summary and reason why the content match user RIASEC result ({top_3}). ALWAYS show user the URL. DON'T call other tools again."
                 return educational_content
             return f"No educational content found for {top_3}."
     except Exception as e:
@@ -298,13 +298,13 @@ tools = [record_preference_tool, alumni_job_tool, job_detail_tool, provide_topic
 
 
 # Main Program
-st.title("Search for Jobs On Alumni Website! 🔍")
+st.title("Search for Jobs On Alumni Website or Educational Content! 🔍")
 
 # Initialize chat history if empty
 if "messages_job" not in st.session_state:
     st.session_state.messages_job = [
         {"role": "assistant",
-         "content": "Halo! What job do you want to search for? 😊\n\nWe will prioritize jobs based on your riasec test result"}
+         "content": "Hello! I can provide you with jobs or educational content based on your RIASEC result! 😊"}
     ]
 
 # Initialize the chat engine
@@ -344,7 +344,8 @@ if prompt := st.chat_input("What is up?"):
                 response_stream = st.session_state.chat_engine_job.stream_chat(prompt)
                 st.write_stream(response_stream.response_gen)
             except Exception as e:
-                st.write_stream("Unable to process your request. Please try again.")
+                response_stream = "Unable to process your request. Please try again."
+                st.write(response_stream)
 
     # Add user message to chat history
     st.session_state.messages_job.append({"role": "assistant", "content": response_stream.response})
