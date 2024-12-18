@@ -85,7 +85,8 @@ the tools in any sequence you deem appropriate to complete the task at hand.
 This may require breaking the task into subtasks and using different tools
 to complete each subtask.
 Prioritize using the record preference tool every time for storing the user preference everytime user inputs, then use the other tool.
-ONLY use search vacan if the user interested in exploring other options, if the user only wants to talk, noo need to use this tool.
+ONLY use search vacancies if the user interested in exploring other options, if the user only wants to talk, noo need to use this tool.
+If user want to get specific job details, use the job details tool with the slug.
 
 You have access to the following tools:
 {tool_desc}
