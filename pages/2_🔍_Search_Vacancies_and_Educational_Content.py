@@ -343,9 +343,9 @@ if prompt := st.chat_input("What is up?"):
             try:
                 response_stream = st.session_state.chat_engine_job.stream_chat(prompt)
                 st.write_stream(response_stream.response_gen)
+                 # Add user message to chat history
+                st.session_state.messages_job.append({"role": "assistant", "content": response_stream.response})
             except Exception as e:
-                response_stream = "Unable to process your request. Please try again."
-                st.write(response_stream)
-
-    # Add user message to chat history
-    st.session_state.messages_job.append({"role": "assistant", "content": response_stream.response})
+                response = "Unable to process your request. Please try again."
+                st.write(response)
+                st.session_state.messages_job.append({"role": "assistant", "content": response})
