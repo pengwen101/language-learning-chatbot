@@ -85,8 +85,7 @@ the tools in any sequence you deem appropriate to complete the task at hand.
 This may require breaking the task into subtasks and using different tools
 to complete each subtask.
 Prioritize using the record preference tool every time for storing the user preference everytime user inputs, then use the other tool.
-ONLY use search vacancies if the user interested in exploring other options, if the user only wants to talk, noo need to use this tool.
-If user want to get specific job details, use the job details tool with the slug.
+ONLY use search vacan if the user interested in exploring other options, if the user only wants to talk, noo need to use this tool.
 
 You have access to the following tools:
 {tool_desc}
@@ -201,10 +200,10 @@ async def search_job_vacancy() -> str:
                 Deskripsi: {BeautifulSoup(data['vacancy']['description'], 'html.parser').get_text() if data['vacancy']['description'] is not None else ''}
                 Job Requirements: {BeautifulSoup(data['vacancy']['requirement'], 'html.parser').get_text() if data['vacancy']['requirement'] is not None else ''}
                 <A reason why this job match user's RIASEC result (Why {data['vacancy']['position_name']} match {keyword})>
-                Link: https://alumni.petra.ac.id/vacancy/{slug} [ALWAYS SHOW THIS TO USER]
+                Link: https://alumni.petra.ac.id/vacancy/{slug} [ALWAYS SHOW URL TO USER]
             """
             idx += 1
-        output += "\n\nShow it directly to user with location, type, system, educational level, salary range, application deadline, description, job requirements, and reason why that job match user RIASEC result. DON'T call other tools again."
+        output += "\n\nShow it directly to user with location, type, system, educational level, salary range, application deadline, description, job requirements, reason why that job match user RIASEC result, and URL of the job posting. DON'T call other tools again."
         return output
     except Exception as e:
         return f"Error fetching jobs: {str(e)}"
